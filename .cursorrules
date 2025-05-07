@@ -64,14 +64,30 @@ The goal is to help you maintain a big picture as well as the progress of the ta
 - (Placeholder for future lessons)
 
 ## Scratchpad
-- Completed implementation of Strategy Module with all components:
-  - Fixed StandardIndicators.cs to properly work with cTrader API
-  - Simplified indicator caching to avoid compatibility issues
-  - Updated IndicatorCombiner.cs to work with cTrader indicators
-  - Fixed EntryExitBase.cs to properly handle position closures
-  - Updated StrategyManager.cs for correct position tracking
-  - Implemented three trading strategies: TrendFollowing, MeanReversion, and Breakout
-  - All components have been tested for API compatibility and fixed
+Current Task: Move risk management logic to a dedicated RiskManager class
+
+[X] Analyze current risk management code
+[X] Create RiskManager class
+[X] Move position sizing logic from TrendStrategy
+[X] Update TrendStrategy to use RiskManager
+[ ] Test the refactored code
+
+Progress:
+- Successfully created RiskManager class with position sizing logic
+- Added error handling in RiskManager for safer position sizing
+- Moved position sizing calculation from TrendStrategy to RiskManager
+- Updated TrendStrategy to use RiskManager for position sizing
+- Next step: Test the refactored code to ensure it works as expected
+
+Next Steps:
+1. Test the refactored code in cTrader
+2. Consider adding more risk management features:
+   - Maximum drawdown limits
+   - Daily loss limits
+   - Maximum open positions
+   - Correlation-based position sizing
+3. Add more error handling and logging
+4. Consider creating an IRiskManager interface for future risk management implementations
 
 # cTrader cBot Implementation Todo List
 
