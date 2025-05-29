@@ -1,11 +1,14 @@
+using System;
 using cAlgo.API;
 using cAlgo.API.Indicators;
+using cAlgo.API.Internals;
+using cAlgo.API.Collections;
 using cAlgo.Robots.Utils; // For Logger, BotConfig etc. if needed by strategies directly
 // Assuming CoreBot is in cAlgo.Robots namespace
 // If CoreBot is in a different namespace, adjust accordingly.
 // For now, let's assume it's in cAlgo.Robots as per the provided CoreBot.cs
 
-namespace cAlgo.Robots.Strategy
+namespace cAlgo.Robots.Strategies
 {
     public abstract class StrategyBase
     {
@@ -64,13 +67,13 @@ namespace cAlgo.Robots.Strategy
         
         #region cTrader API Accessors
         protected Symbol Symbol => Robot.Symbol;
-        protected MarketSeries MarketSeries => Robot.MarketSeries;
+        protected Bars Bars => Robot.Bars;
         protected TimeFrame TimeFrame => Robot.TimeFrame;
-        protected Account Account => Robot.Account;
-        protected Positions Positions => Robot.Positions;
-        protected PendingOrders PendingOrders => Robot.PendingOrders;
-        protected Server Server => Robot.Server;
-        protected Trade Trade => Robot.Trade; // For trade execution methods
+        // protected Account Account => Robot.Account;
+        // protected Positions Positions => Robot.Positions;
+        // protected PendingOrders PendingOrders => Robot.PendingOrders;
+        // protected Server Server => Robot.Server;
+        // protected Trade Trade => Robot.Trade; // For trade execution methods
         #endregion
 
         protected StrategyBase(Corebot robot, string strategyName)
@@ -94,43 +97,22 @@ namespace cAlgo.Robots.Strategy
             Robot.Print(message);
         }
 
-        // Example of a common utility method that might be used by strategies
-        protected virtual bool IsTradingAllowed()
+        protected void ExecuteTrade(TradeType tradeType, string comment = "")
         {
-            if (UseTradingHours)
-            {
-                var currentTime = Server.Time.TimeOfDay;
-                var startTime = new TimeSpan((int)TradingHourStart, 0, 0);
-                var endTime = new TimeSpan((int)TradingHourEnd, 0, 0);
+            double volume = Symbol.QuantityToVolumeInUnits(DefaultPositionSize);
 
-                if (startTime <= endTime) // e.g. 02:00 to 23:00
-                {
-                    if (currentTime < startTime || currentTime >= endTime)
-                    {
-                        return false;
-                    }
-                }
-                else // e.g. 22:00 to 05:00 (overnight)
-                {
-                    if (currentTime < startTime && currentTime >= endTime)
-                    {
-                        return false;
-                    }
-                }
-            }
-            
-            // Check Max Spread
-            if (MaxSpreadInPips > 0 && Symbol.Spread / Symbol.PipSize > MaxSpreadInPips)
+            var result = Robot.ExecuteMarketOrder(tradeType, Symbol.Name, volume, OrderLabel, DefaultStopLoss, DefaultTakeProfit);
+            if (result.IsSuccessful)
             {
-                Logger.Debug($"Spread ({Symbol.Spread / Symbol.PipSize} pips) exceeds MaxSpreadInPips ({MaxSpreadInPips} pips). Trading not allowed.");
-                return false;
+                Logger.Info($"Trade executed successfully: {tradeType} {Symbol.Name} {volume} {OrderLabel} {DefaultStopLoss} {DefaultTakeProfit}");
             }
-
-            return true;
+            else
+            {
+                Logger.Error($"Trade failed: {result.Error}");
+            }
         }
         
         // Potentially more common methods:
-        // protected abstract TradeResult ExecuteMarketOrder(...);
         // protected abstract TradeResult CreatePendingOrder(...);
         // protected abstract void ManageOpenPositions();
         // protected abstract bool CheckEntrySignal(TradeType tradeType);

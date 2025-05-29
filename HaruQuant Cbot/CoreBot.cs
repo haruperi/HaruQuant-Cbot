@@ -8,7 +8,8 @@ using cAlgo.API.Collections;
 using cAlgo.API.Indicators;
 using cAlgo.API.Internals;
 using cAlgo.Robots.Utils; // This now brings in BotState, ErrorHandlerService, and BotErrorException
-// using cAlgo.Robots.ErrorHandling; // No longer needed as classes moved to Utils
+using cAlgo.Robots.Strategies; // <--- Updated to use .Strategies namespace
+
 
 namespace cAlgo.Robots
 {
@@ -31,6 +32,7 @@ namespace cAlgo.Robots
         [Parameter("Trading Mode", Group = "STRATEGY", DefaultValue = TradingMode.Both)]
         public TradingMode MyTradingMode { get; set; }
 
+        // ActiveStrategy now uses the locally defined Strategy enum
         [Parameter("Strategy", Group = "STRATEGY", DefaultValue = Strategy.TrendFollowing)]
         public Strategy ActiveStrategy { get; set; }
 
@@ -222,7 +224,8 @@ namespace cAlgo.Robots
         // private TrendStrategy _trendStrategy;
         // private MeanReversion _meanReversionStrategy;
         // private Swingline _swinglineStrategy;
-        // private StrategyBase _activeStrategy;
+        // private StrategyBase _activeStrategy; // This was for the enum, let's rename for clarity
+        private StrategyBase _activeStrategyInstance; // To hold the instantiated strategy
         private Logger _logger;
         private BotState _botState;
         private ErrorHandlerService _errorHandler; // Added ErrorHandlerService
@@ -244,36 +247,61 @@ namespace cAlgo.Robots
 
             _logger.Info($"{BotConfig.BotName} v{BotConfig.BotVersion} started successfully!");
             
-            // Populate _botState with any initial runtime data if necessary, after loading
-            // For example, if reconciliation with current positions is needed immediately.
-            // However, the main population of what to save should happen before calling _botState.Save()
-
             if (_botState.ActiveTradeLabels.Any())
             {
                 _logger.Info($"Restored state with {_botState.ActiveTradeLabels.Count} active trade labels.");
-                // Add reconciliation logic here: Compare _botState.ActiveTradeLabels with Positions
+            }
+
+            // Strategy Initialization
+            // Switch statement now uses the locally defined Strategy enum
+            switch (ActiveStrategy) 
+            {
+                case Strategy.TrendFollowing:
+                    _activeStrategyInstance = new TrendStrategy(this);
+                    _logger.Info("TrendFollowing strategy selected.");
+                    break;
+                case Strategy.MeanReversion:
+                    // _activeStrategyInstance = new MeanReversionStrategy(this); 
+                    _logger.Info("MeanReversion strategy selected (Not implemented).");
+                    break;
+                default:
+                    _logger.Warning($"Strategy '{ActiveStrategy}' is not yet implemented or recognized. No strategy will be active.");
+                    break;
+            }
+
+            if (_activeStrategyInstance != null)
+            {
+                try
+                {
+                    _activeStrategyInstance.Initialize(); // Call Initialize on the strategy instance
+                    _logger.Info($"Active strategy '{_activeStrategyInstance.GetType().Name}' initialized successfully.");
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error($"Error initializing strategy '{_activeStrategyInstance.GetType().Name}': {ex.Message}", ex);
+                    _activeStrategyInstance = null; // Prevent further calls if initialization failed
+                }
+            }
+            else
+            {
+                _logger.Warning("No active strategy instance was created. Bot will be idle.");
             }
         }
 
         protected override void OnTick()
         {
-            // We don't need to do anything on tick for this strategy
+            _activeStrategyInstance?.OnTick();
         }
         
         protected override void OnBar()
         {
-            // Bar event handler
-            // If you choose to save state periodically:
-            // if (_botState != null) 
-            // {
-            //     // Ensure _botState is populated with the latest data before saving
-            //     UpdateStateBeforePeriodicSave(); 
-            //     _botState.Save(_logger, StateFileName);
-            // }
+            _activeStrategyInstance?.OnBar();
         }
 
         protected override void OnStop()
         {
+            _activeStrategyInstance?.OnStop();
+
             if (_botState != null)
             {
                 // Ensure _botState is populated with the final data before saving
