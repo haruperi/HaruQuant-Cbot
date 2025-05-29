@@ -7,7 +7,8 @@ using cAlgo.API;
 using cAlgo.API.Collections;
 using cAlgo.API.Indicators;
 using cAlgo.API.Internals;
-using cAlgo.Robots.Utils; // This now brings in BotState
+using cAlgo.Robots.Utils; // This now brings in BotState, ErrorHandlerService, and BotErrorException
+// using cAlgo.Robots.ErrorHandling; // No longer needed as classes moved to Utils
 
 namespace cAlgo.Robots
 {
@@ -16,11 +17,13 @@ namespace cAlgo.Robots
     {
         private Logger _logger;
         private BotState _botState;
+        private ErrorHandlerService _errorHandler; // Added ErrorHandlerService
         private const string StateFileName = "BotState.json"; // File name for isolated storage
 
         protected override void OnStart()
         {
             _logger = new Logger(this, BotConfig.BotName, BotConfig.BotVersion);
+            _errorHandler = new ErrorHandlerService(_logger); // Initialize ErrorHandlerService
             
             // Load state using the static method in BotState
             _botState = BotState.Load(_logger, StateFileName);
