@@ -105,13 +105,12 @@ Next Steps:
 - [X] Implement CoreBot.cs entry point class
 - [X] Create lifecycle management (OnStart, OnTick, OnBar, OnStop)
 - [X] Develop Constants.cs for system-wide configuration
-- [X] Added Logger functionality
-- [ ] Implement crash recovery mechanisms
+- [X] Implement crash recovery mechanisms
 - [ ] Create configuration management system
 - [ ] Develop comprehensive error handling framework
 - [ ] Create core data models for market, trades and performance
 - [ ] Implement all required interfaces (IStrategy, IIndicator, etc.)
-- [ ] Set up logging service for system-wide use
+- [X] Set up logging service for system-wide use
 - [ ] Create utility classes and extension methods
 
 ## Market Module
