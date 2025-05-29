@@ -216,22 +216,24 @@ namespace cAlgo.Robots
         // ------------------------------------Global Settings------------------------------------
 
         #region Global variables
-        private const string HowToUseText = "How to use:\nCtrl + Left Mouse Button - Draw Breakout line\nShift + Left Mouse Button - Draw Retracement line";
-        private const string HowToUseObjectName = "LinesTraderText";
+        // private const string HowToUseText = "How to use:\nCtrl + Left Mouse Button - Draw Breakout line\nShift + Left Mouse Button - Draw Retracement line";
+        // private const string HowToUseObjectName = "LinesTraderText";
         
         // private TrendStrategy _trendStrategy;
         // private MeanReversion _meanReversionStrategy;
         // private Swingline _swinglineStrategy;
         // private StrategyBase _activeStrategy;
-
-        #endregion
-
-        #endregion
         private Logger _logger;
         private BotState _botState;
         private ErrorHandlerService _errorHandler; // Added ErrorHandlerService
         private const string StateFileName = "BotState.json"; // File name for isolated storage
 
+        #endregion
+
+        #endregion
+
+// ------------------------------------Standard event handlers------------------------------------
+        #region Standard event handlers
         protected override void OnStart()
         {
             _logger = new Logger(this, BotConfig.BotName, BotConfig.BotVersion);
@@ -298,5 +300,6 @@ namespace cAlgo.Robots
         //     // Example: Update any dynamic properties of _botState here
         //     // _botState.SomeDynamicValue = GetCurrentDynamicValue();
         // }
+        #endregion
     }
 } 

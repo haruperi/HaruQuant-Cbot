@@ -198,3 +198,94 @@ This document outlines the error handling framework implemented in the HaruQuant
 *   **Global Exception Handler (If Applicable)**: While cBots run within the cTrader platform, if you were building a standalone .NET application, you might use `AppDomain.CurrentDomain.UnhandledException` for unhandled exceptions. In cTrader, robust `try-catch` within event handlers (`OnTick`, `OnBar`, `OnStart`, `OnStop`) is key.
 
 By following this framework, you can build a more robust and maintainable cBot that handles unexpected situations gracefully. 
+
+## Crash Recovery Mechanism
+
+To ensure operational continuity and minimize data loss in the event of unexpected shutdowns (e.g., platform crash, machine restart), the HaruQuant cBot implements a crash recovery mechanism.
+
+### Purpose
+
+The primary goal of the crash recovery mechanism is to allow the cBot to:
+- Persist its critical operational state before shutting down or periodically during runtime.
+- Restore this state upon restarting, enabling it to resume operations as closely as possible to where it left off.
+- Minimize the impact of interruptions on trading activity and internal strategy logic.
+
+### Core Components
+
+1.  **`BotState.cs`** (Located in `HaruQuant Cbot/Utils/`)
+    *   **Purpose**: This class defines the data structure for the information that needs to be saved and restored. It's responsible for its own serialization to JSON and deserialization from JSON.
+    *   **Key Properties (Examples - to be expanded based on bot needs)**:
+        *   `ActiveTradeLabels`: A list of labels for currently open positions managed by the bot.
+        *   `CustomStrategyParameter`: Example of a strategy-specific parameter that needs persistence.
+        *   *(This class should be expanded to include all critical state information, such as details of pending orders, internal strategy variables, dynamic parameters, etc.)*
+    *   **Key Methods**:
+        *   `void Save(Logger logger, string fileName)`: Serializes the current `BotState` instance to a JSON file within the cTrader application's isolated storage.
+        *   `static BotState Load(Logger logger, string fileName)`: Deserializes a `BotState` instance from the specified JSON file in isolated storage. If the file doesn't exist or an error occurs, it returns a new `BotState` instance.
+
+### Mechanism
+
+1.  **State Persistence**:
+    *   **Storage**: The bot's state is saved as a JSON file (`BotState.json` by default) in the cTrader application's `IsolatedStorageFile`. This provides a secure, sandboxed environment for data persistence without requiring broad file system access.
+    *   **Serialization**: The `System.Text.Json` library is used to serialize the `BotState` object into a JSON string and vice-versa.
+
+2.  **Saving State**:
+    *   **On Shutdown (`OnStop()` in `CoreBot.cs`)**: When the cBot is stopped gracefully, the `OnStop()` method ensures that the current state of the bot (e.g., labels of open positions, relevant strategy parameters) is collected and then calls `_botState.Save()` to persist this data.
+    *   **Periodic Saving (Optional)**: For added resilience against abrupt crashes where `OnStop()` might not be called, state saving can be implemented periodically (e.g., in `OnBar()`). This is a trade-off, as frequent saving can have performance implications.
+
+3.  **Loading State**:
+    *   **On Startup (`OnStart()` in `CoreBot.cs`)**: When the cBot starts, it calls `BotState.Load()` to attempt to read the previously saved state from isolated storage.
+    *   **Initialization**: If a saved state is successfully loaded, the `_botState` field in `CoreBot.cs` is populated with this restored data. If no state file is found or if an error occurs during loading, a new, default `BotState` instance is created, allowing the bot to start fresh.
+
+### Integration into `CoreBot.cs`
+
+*   An instance of `BotState` is held as a private field `_botState` in `CoreBot.cs`.
+*   The `StateFileName` constant defines the name of the file used for storage.
+*   In `OnStart()`:
+    ```csharp
+    // In CoreBot.cs
+    _logger = new Logger(this, BotConfig.BotName, BotConfig.BotVersion);
+    _errorHandler = new ErrorHandlerService(_logger); 
+    _botState = BotState.Load(_logger, StateFileName); // Load previous state
+    
+    _logger.Info($"{BotConfig.BotName} v{BotConfig.BotVersion} started successfully!");
+    
+    if (_botState.ActiveTradeLabels.Any())
+    {
+        _logger.Info($"Restored state with {_botState.ActiveTradeLabels.Count} active trade labels.");
+        // TODO: Implement reconciliation logic here
+    }
+    ```
+*   In `OnStop()`:
+    ```csharp
+    // In CoreBot.cs
+    if (_botState != null)
+    {
+        // Populate _botState with current data before saving
+        _botState.ActiveTradeLabels.Clear();
+        foreach (var position in Positions)
+        {
+            if (!string.IsNullOrEmpty(position.Label))
+            {
+                _botState.ActiveTradeLabels.Add(position.Label);
+            }
+        }
+        // Populate other _botState properties as needed
+        // _botState.CustomStrategyParameter = someCurrentStrategyValueToSave;
+
+        _botState.Save(_logger, StateFileName);
+    }
+    _logger.Info($"{BotConfig.BotName} shutdown.");
+    ```
+
+### Reconciliation and Best Practices
+
+*   **Expand `BotState.cs`**: Ensure `BotState.cs` includes all variables and data necessary to fully reconstruct the bot's operational context.
+*   **Implement Reconciliation Logic**: After loading the state in `OnStart()`, it's crucial to implement logic that compares the restored state with the actual current market conditions (e.g., `Positions` and `PendingOrders` from the broker). This involves:
+    *   Matching saved positions/orders with actual ones.
+    *   Handling discrepancies (e.g., a position was closed while the bot was offline).
+    *   Adjusting internal strategy variables accordingly.
+*   **Error Handling**: The `Save` and `Load` methods in `BotState.cs` include `try-catch` blocks to handle potential `IOExceptions` or deserialization errors, logging them via the provided `Logger`.
+*   **Testing**: Thoroughly test the crash recovery mechanism by simulating stops and restarts under various conditions (e.g., with open positions, with pending orders) to ensure it behaves as expected.
+*   **State File Versioning (Advanced)**: For long-term maintenance, if the structure of `BotState.cs` changes significantly, consider implementing a versioning system for the state file to handle upgrades or migrations gracefully.
+
+This crash recovery mechanism significantly enhances the cBot's resilience and reliability. 
