@@ -99,7 +99,7 @@ Next Steps:
 - [X] Create new cBot project in cTrader
 - [X] Set up Git repository for version control
 - [X] Configure build settings for different environments (dev, test, prod)
-- [ ] Create project structure according to architecture diagram (Deferred)
+- [X] Create project structure according to architecture diagram
 
 ## Core Bot Module
 - [X] Implement CoreBot.cs entry point class
