@@ -3,6 +3,7 @@ using cAlgo.API;
 using cAlgo.API.Collections;
 using cAlgo.API.Indicators;
 using cAlgo.API.Internals;
+using cAlgo.Robots.Utils;
 
 namespace cAlgo.Robots
 {
@@ -14,7 +15,7 @@ namespace cAlgo.Robots
         protected override void OnStart()
         {
             // Print startup message
-            Print("HaruQuant Corebot started successfully!");
+            Print($"{Constants.BotName} v{Constants.BotVersion} started successfully!");
 
         }
 

@@ -103,8 +103,8 @@ Next Steps:
 
 ## Core Bot Module
 - [X] Implement CoreBot.cs entry point class
-- [ ] Create lifecycle management (OnStart, OnTick, OnBar, OnStop)
-- [ ] Develop Constants.cs for system-wide configuration
+- [X] Create lifecycle management (OnStart, OnTick, OnBar, OnStop)
+- [X] Develop Constants.cs for system-wide configuration
 - [ ] Implement crash recovery mechanisms
 - [ ] Create configuration management system
 - [ ] Develop comprehensive error handling framework
