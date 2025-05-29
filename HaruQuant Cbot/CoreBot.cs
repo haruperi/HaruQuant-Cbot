@@ -10,12 +10,15 @@ namespace cAlgo.Robots
     [Robot(TimeZone = TimeZones.UTC, AccessRights = AccessRights.None, AddIndicators = true)]
     public class Corebot : Robot
     {
-
+        private Logger _logger;
 
         protected override void OnStart()
         {
+            // Initialize the logger
+            _logger = new Logger(this, BotConfig.BotName, BotConfig.BotVersion);
+
             // Print startup message
-            Print($"{Constants.BotName} v{Constants.BotVersion} started successfully!");
+            _logger.Info($"{BotConfig.BotName} v{BotConfig.BotVersion} started successfully!");
 
         }
 
@@ -32,7 +35,7 @@ namespace cAlgo.Robots
         protected override void OnStop()
         {
             // Print shutdown message
-            Print("HaruQuant Corebot shutdown.");
+            _logger.Info($"{BotConfig.BotName} shutdown.");
         }
     }
 } 

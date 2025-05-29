@@ -2,10 +2,18 @@ using System;
 
 namespace cAlgo.Robots.Utils
 {
-    public static class Constants
+    public static class BotConfig
     {
-        public const string BotName = "HaruQuant Corebot";
-        public const string BotVersion = "1.0";
+        public const string BotName = "HaruQuant CoreBot";
+        public const string BotVersion = "1.0.0";
+    }
+
+    public enum LogLevel
+    {
+        Info,
+        Warning,
+        Error,
+        Debug
     }
 
     // TODO: TEST ALL BELOW -----------------------------------------------------------------------
