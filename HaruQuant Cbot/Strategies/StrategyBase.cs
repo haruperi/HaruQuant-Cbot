@@ -3,6 +3,7 @@ using cAlgo.API;
 using cAlgo.API.Indicators;
 using cAlgo.API.Internals;
 using cAlgo.API.Collections;
+using HaruQuantCbot.Trading;
 using cAlgo.Robots.Utils; // For Logger, BotConfig etc. if needed by strategies directly
 // Assuming CoreBot is in cAlgo.Robots namespace
 // If CoreBot is in a different namespace, adjust accordingly.
@@ -69,11 +70,16 @@ namespace cAlgo.Robots.Strategies
         protected Symbol Symbol => Robot.Symbol;
         protected Bars Bars => Robot.Bars;
         protected TimeFrame TimeFrame => Robot.TimeFrame;
+        protected string[] ActiveSymbols => Robot.GetSymbolsToTrade();
         // protected Account Account => Robot.Account;
         // protected Positions Positions => Robot.Positions;
         // protected PendingOrders PendingOrders => Robot.PendingOrders;
         // protected Server Server => Robot.Server;
         // protected Trade Trade => Robot.Trade; // For trade execution methods
+        #endregion
+
+        #region Trade Management Modules
+        protected RiskManager RiskManager;
         #endregion
 
         protected StrategyBase(Corebot robot, string strategyName)
@@ -97,18 +103,41 @@ namespace cAlgo.Robots.Strategies
             Robot.Print(message);
         }
 
-        protected void ExecuteTrade(TradeType tradeType, string comment = "")
+        protected void ExecuteTrade(TradeType tradeType, string symbolName, string comment = "")
         {
-            double volume = Symbol.QuantityToVolumeInUnits(DefaultPositionSize);
+            try
+            {
+                var symbol = Robot.Symbols.GetSymbol(symbolName);
 
-            var result = Robot.ExecuteMarketOrder(tradeType, Symbol.Name, volume, OrderLabel, DefaultStopLoss, DefaultTakeProfit);
-            if (result.IsSuccessful)
-            {
-                Logger.Info($"Trade executed successfully: {tradeType} {Symbol.Name} {volume} {OrderLabel} {DefaultStopLoss} {DefaultTakeProfit}");
+                var (isTradeValid, positionSize, stopLoss, takeProfit) = RiskManager.Run(symbol, tradeType); 
+
+                if (!isTradeValid)
+                {
+                    Logger.Warning($"Trade not valid for {symbolName}");
+                    return;
+                }
+                else
+                {
+         
+                    if (HideStopLoss)
+                        stopLoss = 0;
+                    if (HideTakeProfit)
+                        takeProfit = 0;
+                    var result = Robot.ExecuteMarketOrder(tradeType, symbolName, positionSize, OrderLabel, stopLoss, takeProfit);
+                    
+                    if (result.IsSuccessful)
+                {
+                    Logger.Info($"Trade executed successfully: {tradeType} {symbolName} {positionSize} {OrderLabel} {stopLoss} {takeProfit}");
+                }
+                else
+                {
+                    Logger.Error($"Trade failed for {symbolName}: {result.Error}");
+                    }
+                }
             }
-            else
+            catch (Exception ex)
             {
-                Logger.Error($"Trade failed: {result.Error}");
+                Logger.Error($"Error executing trade for {symbolName}: {ex.Message}");
             }
         }
         

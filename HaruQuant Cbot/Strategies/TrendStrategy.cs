@@ -1,3 +1,4 @@
+using System;
 using cAlgo.API;
 using cAlgo.API.Indicators;
 using cAlgo.Robots.Utils; // For Logger, Enums etc.
@@ -9,6 +10,7 @@ namespace cAlgo.Robots.Strategies
         private MovingAverage _fastMa;
         private MovingAverage _slowMa;
         private MovingAverage _biasMa;
+        private string[] _symbolsToTrade;
 
         public TrendStrategy(Corebot robot) : base(robot, "TrendStrategy")
         {
@@ -17,6 +19,10 @@ namespace cAlgo.Robots.Strategies
 
         public override void Initialize()
         {
+            // Get the list of symbols to trade
+            _symbolsToTrade = Robot.GetSymbolsToTrade();
+            Logger.Info($"Initialized with {_symbolsToTrade.Length} symbols to trade.");
+
             // Initialize indicators using parameters from StrategyBase (which are from CoreBot)
             _fastMa = Robot.Indicators.MovingAverage(SourceSeries, FastPeriod, MAType);
             _slowMa = Robot.Indicators.MovingAverage(SourceSeries, SlowPeriod, MAType);
@@ -27,55 +33,53 @@ namespace cAlgo.Robots.Strategies
 
         public override void OnTick()
         {
-            // Trend strategies typically don't act on every tick to avoid noise.
-            // Logic will be primarily in OnBar.
+            // Trend strategies typically don't act on every tick to avoid noise. Logic will be primarily in OnBar.
         }
 
         public override void OnBar()
         {
-
-            // Ensure enough data for MAs
-            // Index 0 is the most recent **completed** bar. Index 1 is the one before that.
-            // For "current" (forming) bar values, MA.Last(0) or MA.Result.LastValue
-            // For "previous" (last completed) bar values, MA.Last(1) or MA.Result[MarketSeries.Close.Count - 2]
-            // We need at least 3 bars to have previous (index 2) and current (index 1) values for MAs.
-            // MarketSeries.Count - 1 is the current bar index.
-            // MarketSeries.Count - 2 is the last closed bar index (previous).
-            // MarketSeries.Count - 3 is the bar before the last closed bar (previous previous).
-
-            if (Bars.Count < BiasPeriod || Bars.Count < SlowPeriod || Bars.Count < FastPeriod || Bars.Count < 3)
+            foreach (var symbolName in _symbolsToTrade)
             {
-                Logger.Debug("Not enough data to evaluate MA crossover.");
-                return;
+                try
+                {
+                    //var symbol = Robot.Symbols.GetSymbol(symbolName);
+                    var bars = Robot.MarketData.GetBars(TimeFrame, symbolName);
+
+                    // Ensure enough data for MAs
+                    if (bars.Count < BiasPeriod || bars.Count < SlowPeriod || bars.Count < FastPeriod || bars.Count < 3)
+                    {
+                        Logger.Debug($"Not enough data to evaluate MA crossover for {symbolName}.");
+                        continue;
+                    }
+
+                    // Get MA values for the last two completed bars
+                    double currentFastMa = _fastMa.Result.Last(1);
+                    double currentSlowMa = _slowMa.Result.Last(1);
+                    double currentBiasMa = _biasMa.Result.Last(1);
+
+                    // Previous completed bar
+                    double previousFastMa = _fastMa.Result.Last(2);
+                    double previousSlowMa = _slowMa.Result.Last(2);
+
+                    // Buy Condition
+                    if (previousFastMa < previousSlowMa && currentFastMa > currentSlowMa && currentSlowMa > currentBiasMa)
+                    {
+                        Logger.Info($"BUY signal detected for {symbolName}.");
+                        ExecuteTrade(TradeType.Buy, symbolName, "TrendStrategy Buy");
+                    }
+
+                    // Sell Condition
+                    if (previousFastMa > previousSlowMa && currentFastMa < currentSlowMa && currentSlowMa < currentBiasMa)
+                    {
+                        Logger.Info($"SELL signal detected for {symbolName}.");
+                        ExecuteTrade(TradeType.Sell, symbolName, "TrendStrategy Sell");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error($"Error processing {symbolName}: {ex.Message}");
+                }
             }
-            
-            // Get MA values for the last two completed bars
-            // Current completed bar (index 1 from end of MA result which is aligned with MarketSeries)
-            double currentFastMa = _fastMa.Result.Last(1);
-            double currentSlowMa = _slowMa.Result.Last(1);
-            double currentBiasMa = _biasMa.Result.Last(1);
-
-            // Previous completed bar (index 2 from end of MA result)
-            double previousFastMa = _fastMa.Result.Last(2);
-            double previousSlowMa = _slowMa.Result.Last(2);
-            // double previousBiasMa = _biasMa.Result.Last(2); // Not used in current logic but shown for completeness
-
-
-            // Buy Condition
-            if (previousFastMa < previousSlowMa && currentFastMa > currentSlowMa && currentSlowMa > currentBiasMa)
-            {
-                Logger.Info("BUY signal detected. Placeholder for ExecuteMarketOrder (BUY).");
-                ExecuteTrade(TradeType.Buy, "TrendStrategy Buy");
-            }
-
-            // Sell Condition
-            if (previousFastMa > previousSlowMa && currentFastMa < currentSlowMa && currentSlowMa < currentBiasMa)
-            {
-                Logger.Info("SELL signal detected. Placeholder for ExecuteMarketOrder (SELL).");
-                ExecuteTrade(TradeType.Sell, "TrendStrategy Sell");
-            }
-
-            
         }
 
         public override void OnStop()

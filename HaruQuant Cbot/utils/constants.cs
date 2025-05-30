@@ -6,6 +6,26 @@ namespace cAlgo.Robots.Utils
     {
         public const string BotName = "HaruQuant CoreBot";
         public const string BotVersion = "1.0.0";
+        
+        public static readonly string[] ForexSymbols = new string[]
+        {
+            "AUDCAD", "AUDCHF", "AUDJPY", "AUDNZD", "AUDUSD",
+            "CADCHF", "CADJPY", "CHFJPY",
+            "EURAUD", "EURCAD", "EURCHF", "EURGBP", "EURJPY", "EURNZD", "EURUSD",
+            "GBPAUD", "GBPCAD", "GBPCHF", "GBPJPY", "GBPNZD", "GBPUSD",
+            "NZDCAD", "NZDCHF", "NZDJPY", "NZDUSD",
+            "USDCHF", "USDCAD", "USDJPY"
+        };
+
+        public static readonly string[] CommoditySymbols = new string[]
+        {
+            "XAUUSD", "XAUEUR", "XAUGBP", "XAUJPY", "XAUAUD", "XAUCHF", "XAGUSD"
+        };
+
+        public static readonly string[] IndexSymbols = new string[]
+        {
+            "US500", "US30", "UK100", "GER40", "NAS100", "USDX", "EURX"
+        };
     }
 
     public enum LogLevel
@@ -17,6 +37,14 @@ namespace cAlgo.Robots.Utils
     }
 
     // TODO: TEST ALL BELOW -----------------------------------------------------------------------
+    public enum SymbolsToTrade
+    {
+        Forex = 0,
+        Commodities = 1,
+        Indices = 2,
+        Custom = 3,
+        All = 4
+    }
     public enum RiskBase
     {
         Equity = 1,         // Equity

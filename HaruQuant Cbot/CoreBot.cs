@@ -36,6 +36,12 @@ namespace cAlgo.Robots
         [Parameter("Strategy", Group = "STRATEGY", DefaultValue = Strategy.TrendFollowing)]
         public Strategy ActiveStrategy { get; set; }
 
+        [Parameter("Symbols To Trade", Group = "STRATEGY", DefaultValue = SymbolsToTrade.Custom)]
+        public SymbolsToTrade SymbolsToTrade { get; set; }
+
+        [Parameter("Custom Symbols (comma-separated)", Group = "STRATEGY", DefaultValue = "")]
+        public string CustomSymbols { get; set; }
+
         [Parameter("MA Type", Group = "STRATEGY", DefaultValue = MovingAverageType.Exponential)]
         public MovingAverageType MAType { get; set; }
 
@@ -328,6 +334,34 @@ namespace cAlgo.Robots
         //     // Example: Update any dynamic properties of _botState here
         //     // _botState.SomeDynamicValue = GetCurrentDynamicValue();
         // }
+
+        public string[] GetSymbolsToTrade()
+        {
+            switch (SymbolsToTrade)
+            {
+                case Utils.SymbolsToTrade.Forex:
+                    return Utils.BotConfig.ForexSymbols;
+                case Utils.SymbolsToTrade.Commodities:
+                    return Utils.BotConfig.CommoditySymbols;
+                case Utils.SymbolsToTrade.Indices:
+                    return Utils.BotConfig.IndexSymbols;
+                case Utils.SymbolsToTrade.All:
+                    return Utils.BotConfig.ForexSymbols
+                        .Concat(Utils.BotConfig.CommoditySymbols)
+                        .Concat(Utils.BotConfig.IndexSymbols)
+                        .ToArray();
+                case Utils.SymbolsToTrade.Custom:
+                    if (string.IsNullOrWhiteSpace(CustomSymbols))
+                    {
+                        return new[] { Symbol.Name };
+                    }
+                    return CustomSymbols.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                        .Select(s => s.Trim())
+                        .ToArray();
+                default:
+                    return new[] { Symbol.Name };
+            }
+        }
         #endregion
     }
 } 
