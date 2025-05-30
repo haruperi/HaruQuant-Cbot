@@ -16,6 +16,7 @@ namespace cAlgo.Robots.Strategies
         protected readonly Corebot Robot;
         protected readonly Logger Logger; // Each strategy can have its own logger instance or use Robot's
         protected readonly RiskManager RiskManager;
+        protected readonly TradeManager TradeManager;
 
         #region Strategy Parameters (mirrored from CoreBot)
         protected TradingMode MyTradingMode => Robot.MyTradingMode;
@@ -79,58 +80,14 @@ namespace cAlgo.Robots.Strategies
         {
             Robot = robot;
             Logger = new Logger(robot, strategyName, BotConfig.BotVersion);
-            RiskManager = new RiskManager(robot); // Initialize RiskManager
+            RiskManager = new RiskManager(robot);
+            TradeManager = new TradeManager(robot);
         }
 
         public abstract void Initialize();
         public abstract void OnTick();
         public abstract void OnBar();
         public abstract void OnStop();
-        
-        // Helper method to print messages via the Robot instance
-        protected void Print(object message)
-        {
-            Robot.Print(message);
-        }
-
-
-        protected void ExecuteTrade(TradeType tradeType, Symbol symbol, string comment = "")
-        {
-            try
-            {
-
-                var (isTradeValid, positionSize, stopLoss, takeProfit) = RiskManager.Run(symbol, tradeType); 
-
-                if (!isTradeValid)
-                {
-                    Logger.Warning($"Trade not valid for {symbol.Name}");
-                    return;
-                }
-                else
-                {
-         
-                    if (HideStopLoss)
-                        stopLoss = 0;
-                    if (HideTakeProfit)
-                        takeProfit = 0;
-                    var result = Robot.ExecuteMarketOrder(tradeType, symbol.Name, positionSize, OrderLabel, stopLoss, takeProfit);
-                    
-                    if (result.IsSuccessful)
-                {
-                    Logger.Info($"Trade executed successfully: {tradeType} {symbol.Name} {positionSize} {OrderLabel} {stopLoss} {takeProfit}");
-                }
-                else
-                {
-                    Logger.Error($"Trade failed for {symbol.Name}: {result.Error}");
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.Error($"Error executing trade for {symbol.Name}: {ex.Message}");
-            }
-        }
-        
 
     }
 } 

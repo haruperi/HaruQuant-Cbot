@@ -45,12 +45,9 @@ namespace HaruQuantCbot.Trading
         private readonly HourOfDay _tradingHourEnd;
         private readonly TradingDirection _tradingDirection;
 
-        /// <summary>
-        /// Initializes a new instance of the RiskManager class
-        /// </summary>
-        /// <param name="robot">The robot instance</param>
         public RiskManager(Corebot robot)
         {
+            // Initializes a new instance of the RiskManager class
             Robot = robot;
             Logger = new Logger(robot, "RiskManager", "1.0");
             _atrIndicators = new Dictionary<string, AverageTrueRange>();

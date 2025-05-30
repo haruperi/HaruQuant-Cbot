@@ -66,14 +66,14 @@ namespace cAlgo.Robots.Strategies
                     if (previousFastMa < previousSlowMa && currentFastMa > currentSlowMa && currentSlowMa > currentBiasMa)
                     {
                         Logger.Info($"BUY signal detected for {symbolName}.");
-                        ExecuteTrade(TradeType.Buy, symbol, "TrendStrategy Buy");
+                        TradeManager.ExecuteTrade(TradeType.Buy, symbol, "TrendStrategy Buy");
                     }
 
                     // Sell Condition
                     if (previousFastMa > previousSlowMa && currentFastMa < currentSlowMa && currentSlowMa < currentBiasMa)
                     {
                         Logger.Info($"SELL signal detected for {symbolName}.");
-                        ExecuteTrade(TradeType.Sell, symbol, "TrendStrategy Sell");
+                        TradeManager.ExecuteTrade(TradeType.Sell, symbol, "TrendStrategy Sell");
                     }
                 }
                 catch (Exception ex)
