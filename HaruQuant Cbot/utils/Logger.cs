@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Threading;
 using cAlgo.API;
 
 namespace cAlgo.Robots.Utils
@@ -12,6 +13,9 @@ namespace cAlgo.Robots.Utils
         private readonly bool _enableFileLogging;
         private readonly string _botName;
         private readonly string _botVersion;
+        private readonly object _lockObject = new object();
+        private const int MaxRetries = 3;
+        private const int RetryDelayMs = 100;
 
         public Logger(Robot robot, string botName, string botVersion, bool enableConsoleLogging = true, bool enableFileLogging = true, string logFileName = "cbot_log.txt")
         {
@@ -36,6 +40,50 @@ namespace cAlgo.Robots.Utils
             }
         }
 
+        private void WriteToFile(string message)
+        {
+            if (!_enableFileLogging || string.IsNullOrEmpty(_logFilePath))
+                return;
+
+            int retryCount = 0;
+            bool success = false;
+
+            while (!success && retryCount < MaxRetries)
+            {
+                try
+                {
+                    lock (_lockObject)
+                    {
+                        using (var fileStream = new FileStream(_logFilePath, FileMode.Append, FileAccess.Write, FileShare.Read))
+                        using (var writer = new StreamWriter(fileStream))
+                        {
+                            writer.WriteLine(message);
+                            writer.Flush();
+                        }
+                    }
+                    success = true;
+                }
+                catch (IOException)
+                {
+                    retryCount++;
+                    if (retryCount < MaxRetries)
+                    {
+                        Thread.Sleep(RetryDelayMs);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _robot.Print($"Error writing to log file: {ex.Message}");
+                    break;
+                }
+            }
+
+            if (!success)
+            {
+                _robot.Print($"Failed to write to log file after {MaxRetries} attempts. Message: {message}");
+            }
+        }
+
         public void Log(string message, LogLevel level = LogLevel.Info)
         {
             string formattedMessage = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [{level}] - {message}";
@@ -45,18 +93,7 @@ namespace cAlgo.Robots.Utils
                 _robot.Print(formattedMessage);
             }
 
-            if (_enableFileLogging && !string.IsNullOrEmpty(_logFilePath))
-            {
-                try
-                {
-                    File.AppendAllText(_logFilePath, formattedMessage + Environment.NewLine);
-                }
-                catch (Exception ex)
-                {
-                    _robot.Print($"Error writing to log file: {ex.Message}");
-                    // Optionally disable file logging if it continues to fail
-                }
-            }
+            WriteToFile(formattedMessage);
         }
 
         public void Info(string message)
