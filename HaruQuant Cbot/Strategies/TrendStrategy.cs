@@ -21,6 +21,7 @@ namespace cAlgo.Robots.Strategies
         {
             // Get the list of symbols to trade
             _symbolsToTrade = Robot.GetSymbolsToTrade();
+            Logger.Info("Initialized: TrendStrategy");
             Logger.Info($"Initialized with {_symbolsToTrade.Length} symbols to trade.");
 
             // Initialize indicators using parameters from StrategyBase (which are from CoreBot)
@@ -37,12 +38,12 @@ namespace cAlgo.Robots.Strategies
         }
 
         public override void OnBar()
-        {
+        { 
             foreach (var symbolName in _symbolsToTrade)
             {
                 try
                 {
-                    //var symbol = Robot.Symbols.GetSymbol(symbolName);
+                    var symbol = Robot.Symbols.GetSymbol(symbolName);
                     var bars = Robot.MarketData.GetBars(TimeFrame, symbolName);
 
                     // Ensure enough data for MAs
@@ -65,14 +66,14 @@ namespace cAlgo.Robots.Strategies
                     if (previousFastMa < previousSlowMa && currentFastMa > currentSlowMa && currentSlowMa > currentBiasMa)
                     {
                         Logger.Info($"BUY signal detected for {symbolName}.");
-                        ExecuteTrade(TradeType.Buy, symbolName, "TrendStrategy Buy");
+                        ExecuteTrade(TradeType.Buy, symbol, "TrendStrategy Buy");
                     }
 
                     // Sell Condition
                     if (previousFastMa > previousSlowMa && currentFastMa < currentSlowMa && currentSlowMa < currentBiasMa)
                     {
                         Logger.Info($"SELL signal detected for {symbolName}.");
-                        ExecuteTrade(TradeType.Sell, symbolName, "TrendStrategy Sell");
+                        ExecuteTrade(TradeType.Sell, symbol, "TrendStrategy Sell");
                     }
                 }
                 catch (Exception ex)
@@ -80,6 +81,7 @@ namespace cAlgo.Robots.Strategies
                     Logger.Error($"Error processing {symbolName}: {ex.Message}");
                 }
             }
+            
         }
 
         public override void OnStop()

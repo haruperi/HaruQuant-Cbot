@@ -149,7 +149,7 @@ namespace cAlgo.Robots
         // ------------------------------------Trading Settings------------------------------------
 
         #region Trading Settings
-        [Parameter("Use Trading Hours", Group = "TRADING SETTINGS", DefaultValue = false)]
+        [Parameter("Use Trading Hours", Group = "TRADING SETTINGS", DefaultValue = true)]
         public bool UseTradingHours { get; set; }
 
         [Parameter("Trading Start Hour", Group = "TRADING SETTINGS", DefaultValue = HourOfDay.H02)]
@@ -165,10 +165,10 @@ namespace cAlgo.Robots
         public string OrderLabel { get; set; }
 
         [Parameter("Slippage (Pips)", Group = "TRADING SETTINGS", DefaultValue = 1, MinValue = 0)]
-        public int SlippageInPips { get; set; }
+        public double SlippageInPips { get; set; }
 
-        [Parameter("Max Spread (Pips)", Group = "TRADING SETTINGS", DefaultValue = 5, MinValue = 0)]
-        public int MaxSpreadInPips { get; set; }
+        [Parameter("Max Spread (Pips)", Group = "TRADING SETTINGS", DefaultValue = 3, MinValue = 0)]
+        public double MaxSpreadInPips { get; set; }
         #endregion
 
         // ------------------------------------Notification Settings------------------------------------

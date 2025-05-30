@@ -15,6 +15,7 @@ namespace cAlgo.Robots.Strategies
     {
         protected readonly Corebot Robot;
         protected readonly Logger Logger; // Each strategy can have its own logger instance or use Robot's
+        protected readonly RiskManager RiskManager;
 
         #region Strategy Parameters (mirrored from CoreBot)
         protected TradingMode MyTradingMode => Robot.MyTradingMode;
@@ -62,8 +63,8 @@ namespace cAlgo.Robots.Strategies
         protected HourOfDay TradingHourEnd => Robot.TradingHourEnd;
         protected TradingDirection TradingDirection => Robot.TradingDirection;
         protected string OrderLabel => Robot.OrderLabel;
-        protected int SlippageInPips => Robot.SlippageInPips;
-        protected int MaxSpreadInPips => Robot.MaxSpreadInPips;
+        protected double SlippageInPips => Robot.SlippageInPips;
+        protected double MaxSpreadInPips => Robot.MaxSpreadInPips;
         #endregion
         
         #region cTrader API Accessors
@@ -71,25 +72,14 @@ namespace cAlgo.Robots.Strategies
         protected Bars Bars => Robot.Bars;
         protected TimeFrame TimeFrame => Robot.TimeFrame;
         protected string[] ActiveSymbols => Robot.GetSymbolsToTrade();
-        // protected Account Account => Robot.Account;
-        // protected Positions Positions => Robot.Positions;
-        // protected PendingOrders PendingOrders => Robot.PendingOrders;
-        // protected Server Server => Robot.Server;
-        // protected Trade Trade => Robot.Trade; // For trade execution methods
         #endregion
 
-        #region Trade Management Modules
-        protected RiskManager RiskManager;
-        #endregion
 
         protected StrategyBase(Corebot robot, string strategyName)
         {
             Robot = robot;
-            // It's good practice for each strategy to have its own logger context if needed,
-            // or you can pass the CoreBot's logger.
-            // For simplicity, let's create a new logger instance for the strategy.
-            // This assumes Logger can be instantiated this way or you adjust as needed.
-            Logger = new Logger(robot, strategyName, BotConfig.BotVersion); 
+            Logger = new Logger(robot, strategyName, BotConfig.BotVersion);
+            RiskManager = new RiskManager(robot); // Initialize RiskManager
         }
 
         public abstract void Initialize();
@@ -103,17 +93,17 @@ namespace cAlgo.Robots.Strategies
             Robot.Print(message);
         }
 
-        protected void ExecuteTrade(TradeType tradeType, string symbolName, string comment = "")
+
+        protected void ExecuteTrade(TradeType tradeType, Symbol symbol, string comment = "")
         {
             try
             {
-                var symbol = Robot.Symbols.GetSymbol(symbolName);
 
                 var (isTradeValid, positionSize, stopLoss, takeProfit) = RiskManager.Run(symbol, tradeType); 
 
                 if (!isTradeValid)
                 {
-                    Logger.Warning($"Trade not valid for {symbolName}");
+                    Logger.Warning($"Trade not valid for {symbol.Name}");
                     return;
                 }
                 else
@@ -123,27 +113,24 @@ namespace cAlgo.Robots.Strategies
                         stopLoss = 0;
                     if (HideTakeProfit)
                         takeProfit = 0;
-                    var result = Robot.ExecuteMarketOrder(tradeType, symbolName, positionSize, OrderLabel, stopLoss, takeProfit);
+                    var result = Robot.ExecuteMarketOrder(tradeType, symbol.Name, positionSize, OrderLabel, stopLoss, takeProfit);
                     
                     if (result.IsSuccessful)
                 {
-                    Logger.Info($"Trade executed successfully: {tradeType} {symbolName} {positionSize} {OrderLabel} {stopLoss} {takeProfit}");
+                    Logger.Info($"Trade executed successfully: {tradeType} {symbol.Name} {positionSize} {OrderLabel} {stopLoss} {takeProfit}");
                 }
                 else
                 {
-                    Logger.Error($"Trade failed for {symbolName}: {result.Error}");
+                    Logger.Error($"Trade failed for {symbol.Name}: {result.Error}");
                     }
                 }
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error executing trade for {symbolName}: {ex.Message}");
+                Logger.Error($"Error executing trade for {symbol.Name}: {ex.Message}");
             }
         }
         
-        // Potentially more common methods:
-        // protected abstract TradeResult CreatePendingOrder(...);
-        // protected abstract void ManageOpenPositions();
-        // protected abstract bool CheckEntrySignal(TradeType tradeType);
+
     }
 } 

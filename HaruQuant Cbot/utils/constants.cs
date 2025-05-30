@@ -28,6 +28,15 @@ namespace cAlgo.Robots.Utils
         };
     }
 
+     public enum SymbolsToTrade
+    {
+        Forex = 0,
+        Commodities = 1,
+        Indices = 2,
+        Custom = 3,
+        All = 4
+    }
+
     public enum LogLevel
     {
         Info,
@@ -36,56 +45,7 @@ namespace cAlgo.Robots.Utils
         Debug
     }
 
-    // TODO: TEST ALL BELOW -----------------------------------------------------------------------
-    public enum SymbolsToTrade
-    {
-        Forex = 0,
-        Commodities = 1,
-        Indices = 2,
-        Custom = 3,
-        All = 4
-    }
-    public enum RiskBase
-    {
-        Equity = 1,         // Equity
-        Balance = 2,        // Balance
-        FreeMargin = 3,     // Free Margin
-        FixedBalance = 4    // Fixed Balance
-    }
-
-    public enum RiskDefaultSize
-    {
-        FixedLots = 1,       // Fixed Size
-        Auto = 2,            // Automatic Size Based on Risk
-        FixedAmount = 3,      // Fixed Money
-        FixedLotsStep = 4,    // Fixed Lots Step
-    }
-
-    public enum StopLossMode
-    {
-        Fixed = 0,          // Fixed Stop Loss
-        None = 2,            // No Stop Loss
-        UseATR = 3,          // Use ATR for Stop Loss
-        UseADR = 4          // Use ADR for Stop Loss
-    }
-
-    public enum TakeProfitMode
-    {
-        Fixed = 0,          // Fixed Take Profit
-        None = 1,            // No Take Profit
-        UseATR = 2,          // Use ATR for Take Profit
-        UseADR = 3          // Use ADR for Take Profit
-    }
-
-
-    public enum TradingDirection
-    {
-        Both = 0,       // Allow Both Buy and Sell
-        Buy = 1,        // Allow Buy Only
-        Sell = -1       // Allow Sell Only
-    }
-
-        public enum HourOfDay
+          public enum HourOfDay
     {
         H00 = 00,     // 00:00
         H01 = 01,     // 01:00
@@ -113,9 +73,44 @@ namespace cAlgo.Robots.Utils
         H23 = 23      // 23:00
     }
 
+     public enum TradingDirection
+    {
+        Both = 0,       // Allow Both Buy and Sell
+        Buy = 1,        // Allow Buy Only
+        Sell = -1       // Allow Sell Only
+    }
 
+        public enum StopLossMode
+    {
+        Fixed = 0,          // Fixed Stop Loss
+        None = 2,            // No Stop Loss
+        UseATR = 3,          // Use ATR for Stop Loss
+        UseADR = 4          // Use ADR for Stop Loss
+    }
+    public enum TakeProfitMode
+    {
+        Fixed = 0,          // Fixed Take Profit
+        None = 1,            // No Take Profit
+        UseATR = 2,          // Use ATR for Take Profit
+        UseADR = 3          // Use ADR for Take Profit
+    }
 
+        public enum RiskBase
+    {
+        Equity = 1,         // Equity
+        Balance = 2,        // Balance
+        FreeMargin = 3,     // Free Margin
+        FixedBalance = 4    // Fixed Balance
+    }
 
+    public enum RiskDefaultSize
+    {
+        FixedLots = 1,       // Fixed Size
+        Auto = 2,            // Automatic Size Based on Risk
+        FixedAmount = 3,      // Fixed Money
+        FixedLotsStep = 4,    // Fixed Lots Step
+    }
+   
 
     public enum TradingMode
         {
