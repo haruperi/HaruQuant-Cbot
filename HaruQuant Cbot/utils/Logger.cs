@@ -7,7 +7,7 @@ namespace cAlgo.Robots.Utils
 {
     public class Logger
     {
-        private readonly string _logFilePath;
+        private readonly string _logDirectory;
         private readonly Robot _robot;
         private readonly bool _enableConsoleLogging;
         private readonly bool _enableFileLogging;
@@ -16,6 +16,9 @@ namespace cAlgo.Robots.Utils
         private readonly object _lockObject = new object();
         private const int MaxRetries = 3;
         private const int RetryDelayMs = 100;
+        private const int MaxFileSizeMB = 1;
+        private const int MaxBackupFiles = 5;
+        private string _currentLogFile;
 
         public Logger(Robot robot, string botName, string botVersion, bool enableConsoleLogging = true, bool enableFileLogging = true, string logFileName = "cbot_log.txt")
         {
@@ -27,22 +30,66 @@ namespace cAlgo.Robots.Utils
 
             if (_enableFileLogging)
             {
-                // Revert to using the user's Documents folder as the base path
-                // Path: {UserDocuments}/cAlgo/Data/cBots/{BotName}/Logs/
                 string documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
                 string cBotDataRootPath = Path.Combine(documentsPath, "cAlgo", "Data", "cBots");
                 string botSpecificDataPath = Path.Combine(cBotDataRootPath, _botName);
-                string logsDirectory = Path.Combine(botSpecificDataPath, "Logs"); // Changed "logs" to "Logs" for consistency
+                _logDirectory = Path.Combine(botSpecificDataPath, "Logs");
                 
-                Directory.CreateDirectory(logsDirectory); // This will create all necessary parent directories
+                Directory.CreateDirectory(_logDirectory);
                 
-                _logFilePath = Path.Combine(logsDirectory, $"{_botName}_{_botVersion}_{DateTime.Now:yyyyMMdd_HHmmss}_{logFileName}");
+                _currentLogFile = Path.Combine(_logDirectory, $"{_botName}_{_botVersion}_{DateTime.Now:yyyyMMdd_HHmmss}_{logFileName}");
+            }
+        }
+
+        private void RotateLogFileIfNeeded()
+        {
+            if (!_enableFileLogging || string.IsNullOrEmpty(_currentLogFile))
+                return;
+
+            try
+            {
+                var fileInfo = new FileInfo(_currentLogFile);
+                if (!fileInfo.Exists)
+                    return;
+
+                // Check if current file size exceeds the limit (1MB)
+                if (fileInfo.Length >= MaxFileSizeMB * 1024 * 1024)
+                {
+                    // Delete oldest backup if we have reached the maximum number of backups
+                    string oldestBackup = Path.Combine(_logDirectory, $"{_botName}_{_botVersion}_backup_{MaxBackupFiles}.txt");
+                    if (File.Exists(oldestBackup))
+                    {
+                        File.Delete(oldestBackup);
+                    }
+
+                    // Shift existing backups
+                    for (int i = MaxBackupFiles - 1; i >= 1; i--)
+                    {
+                        string oldBackup = Path.Combine(_logDirectory, $"{_botName}_{_botVersion}_backup_{i}.txt");
+                        string newBackup = Path.Combine(_logDirectory, $"{_botName}_{_botVersion}_backup_{i + 1}.txt");
+                        if (File.Exists(oldBackup))
+                        {
+                            File.Move(oldBackup, newBackup);
+                        }
+                    }
+
+                    // Move current log to backup 1
+                    string firstBackup = Path.Combine(_logDirectory, $"{_botName}_{_botVersion}_backup_1.txt");
+                    File.Move(_currentLogFile, firstBackup);
+
+                    // Create new log file
+                    _currentLogFile = Path.Combine(_logDirectory, $"{_botName}_{_botVersion}_{DateTime.Now:yyyyMMdd_HHmmss}_cbot_log.txt");
+                }
+            }
+            catch (Exception ex)
+            {
+                _robot.Print($"Error rotating log file: {ex.Message}");
             }
         }
 
         private void WriteToFile(string message)
         {
-            if (!_enableFileLogging || string.IsNullOrEmpty(_logFilePath))
+            if (!_enableFileLogging || string.IsNullOrEmpty(_currentLogFile))
                 return;
 
             int retryCount = 0;
@@ -54,7 +101,9 @@ namespace cAlgo.Robots.Utils
                 {
                     lock (_lockObject)
                     {
-                        using (var fileStream = new FileStream(_logFilePath, FileMode.Append, FileAccess.Write, FileShare.Read))
+                        RotateLogFileIfNeeded();
+
+                        using (var fileStream = new FileStream(_currentLogFile, FileMode.Append, FileAccess.Write, FileShare.Read))
                         using (var writer = new StreamWriter(fileStream))
                         {
                             writer.WriteLine(message);
