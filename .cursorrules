@@ -82,21 +82,30 @@ Examples:
 - (Placeholder for future lessons)
 
 ## Scratchpad
-Current Task: Rename Entry Point Class - HaruQuant-Cbot.cs to CoreBot.cs
+Current Task: Create utils/Constants.cs for system-wide configuration
 
 Task Breakdown:
 [X] Update .cursorrules Scratchpad with new task
-[X] Rename HaruQuant-Cbot.cs file to CoreBot.cs
-[X] Update class name from HaruQuantCbot to CoreBot
-[X] Verify project compilation and references (no linting errors)
+[X] Create utils directory structure
+[X] Create Constants.cs file with provided configuration
+[X] Add BotConfig class with system constants
+[X] Add all required enums for trading configuration
+[X] Verify compilation and imports (no linting errors)
 
 Task Context:
-- Main entry point file needs to be renamed for better organization
-- Following architectural design where CoreBot.cs serves as the primary robot class
-- Need to ensure class name matches file name convention
-- This is part of the core module organization as outlined in the todo list
+- Creating centralized configuration system for the entire bot
+- Adding essential constants for bot identification and symbol groupings
+- Implementing comprehensive enums for trading modes, risk management, and strategies
+- This establishes the foundation for configurable trading parameters
+- Part of Core Bot Module development as outlined in the todo list
 
 Previous Completed Work:
+✅ ENTRY POINT REFACTORING COMPLETED:
+- [X] Renamed HaruQuant-Cbot.cs to CoreBot.cs
+- [X] Updated class name from HaruQuantCbot to CoreBot
+- [X] Updated git commit guidelines in .cursorrules
+- [X] Applied proper conventional commit practices
+
 ✅ TRADING MODULE COMPLETED: Full trading infrastructure ready
 - [X] RiskManager.cs - Position sizing, validation, risk management
 - [X] TradeManager.cs - Trade execution, trailing stops, position management
@@ -111,7 +120,7 @@ Previous Completed Work:
 - [X] Error handling and logging throughout strategy framework
 - [X] CoreBot integration with automatic strategy initialization
 
-Ready for: Entry point class refactoring and further module development
+Ready for: Constants implementation and continued Core Bot Module development
 
 # cTrader cBot Implementation Todo List
 
