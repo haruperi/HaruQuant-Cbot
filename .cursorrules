@@ -92,28 +92,36 @@ Examples:
 ## Lessons
 - Comprehensive logging is MANDATORY for all processes - every method entry/exit, trade decision, calculation, and system interaction must be logged with full context for effective debugging and monitoring.
 - Use the Logger service with appropriate log levels (Debug, Info, Warning, Error) and include method names, parameters, and results in all log messages.
+- Fixed critical threading issues in HaruQuant CoreBot that were causing AutomateDispatcherUnhandledException errors. The issue was accessing Robot properties (Account.Balance, Positions.Count, etc.) from background timer threads. Solution: wrapped all Robot property access in BeginInvokeOnMainThread() calls in CrashRecovery.cs and ErrorHandler.cs. This prevents the "Unable to invoke target method in current thread" error that was causing the bot to crash repeatedly.
 - (Placeholder for future lessons)
 
 ## Scratchpad
-Current Task: Create Logger.cs for system-wide logging service
+Current Task: Fix Logger.cs stack overflow and improve log rotation
 
 Task Breakdown:
-[X] Update .cursorrules Scratchpad with new task
-[X] Create Logger.cs in utils directory with comprehensive logging features
-[X] Integrate Logger into CoreBot.cs with parameter-based configuration
-[X] Add logger initialization in OnStart() method
-[X] Add logger cleanup in OnStop() method
-[X] Update lifecycle methods with logging statements
-[X] Verify compilation and logging functionality (no linting errors)
+[X] Update .cursorrules Scratchpad with new task  
+[X] Increase log file size limit from 1MB to 10MB
+[X] Improve rotational logging mechanism for better stability
+[X] Add better error handling for file operations during rotation
+[X] Implement safer log rotation that doesn't block the main thread
+[X] Add emergency fallback mechanisms for file operations
+[X] Verify compilation and code quality (no linting errors)
 
 Task Context:
-- Creating comprehensive logging service for system-wide use
-- Implementing both console and file logging with rotation
-- Utilizing Constants.cs LogLevel enum for type-safe logging
-- Integrating with CoreBot parameters for user configuration
-- Establishing foundation for debugging and monitoring across all modules
+- Fixing critical issue: "A new guard page for the stack cannot be created" during backtest
+- Issue occurs when log file reaches 1025KB and rotation fails
+- Bot terminates unexpectedly during log rotation process
+- Need larger file sizes and more robust rotation mechanism
+- Must ensure logging never blocks or crashes the trading bot
 
 Previous Completed Work:
+✅ LOGGER IMPLEMENTATION COMPLETED:
+- [X] Created comprehensive Logger.cs with file rotation
+- [X] Integrated Logger into CoreBot.cs with parameter configuration
+- [X] Added mandatory logging guidelines to .cursorrules
+- [X] Verified compilation and basic functionality
+- [X] Committed with conventional commit practices
+
 ✅ COREBOT PARAMETER SYSTEM COMPLETED:
 - [X] Added comprehensive parameter system to CoreBot.cs
 - [X] Implemented 75+ parameters across 7 logical groups
@@ -133,17 +141,7 @@ Previous Completed Work:
 - [X] Updated class name from HaruQuantCbot to CoreBot
 - [X] Updated git commit guidelines in .cursorrules
 
-✅ TRADING MODULE COMPLETED: Full trading infrastructure ready
-- [X] RiskManager.cs - Position sizing, validation, risk management
-- [X] TradeManager.cs - Trade execution, trailing stops, position management
-- [X] Full integration with CoreBot parameters and error handling
-
-✅ STRATEGY MODULE COMPLETED: Full strategy framework implemented
-- [X] StrategyBase.cs - Abstract base class with comprehensive CoreBot integration
-- [X] NaiveTrend.cs - Triple MA strategy with proper crossover logic
-- [X] Full integration with RiskManager and TradeManager
-
-Ready for: Logger implementation and Core Bot Module completion
+Ready for: Logger bug fixes and improved rotation mechanism
 
 # cTrader cBot Implementation Todo List
 

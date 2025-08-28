@@ -20,8 +20,8 @@ namespace cAlgo.Robots.Utils
         private readonly object _lockObject = new object();
         private const int MaxRetries = 3;
         private const int RetryDelayMs = 100;
-        private const int MaxFileSizeMB = 1;
-        private const int MaxBackupFiles = 5;
+        private const int MaxFileSizeMB = 10; // Increased from 1MB to 10MB
+        private const int MaxBackupFiles = 10; // Increased backup files to handle more history
         private string _currentLogFile;
 
         /// <summary>
@@ -73,42 +73,86 @@ namespace cAlgo.Robots.Utils
                 if (!fileInfo.Exists)
                     return;
 
-                // Check if current file size exceeds the limit (1MB)
+                // Check if current file size exceeds the limit (10MB)
                 if (fileInfo.Length >= MaxFileSizeMB * 1024 * 1024)
                 {
-                    Log($"Log file size exceeded {MaxFileSizeMB}MB, rotating log files...", LogLevel.Info);
+                    // Use console logging to avoid recursion during rotation
+                    _robot.Print($"Log file size exceeded {MaxFileSizeMB}MB, rotating log files...");
 
-                    // Delete oldest backup if we have reached the maximum number of backups
-                    string oldestBackup = Path.Combine(_logDirectory, $"{_botName}_{_botVersion}_backup_{MaxBackupFiles}.txt");
-                    if (File.Exists(oldestBackup))
-                    {
-                        File.Delete(oldestBackup);
-                    }
-
-                    // Shift existing backups
-                    for (int i = MaxBackupFiles - 1; i >= 1; i--)
-                    {
-                        string oldBackup = Path.Combine(_logDirectory, $"{_botName}_{_botVersion}_backup_{i}.txt");
-                        string newBackup = Path.Combine(_logDirectory, $"{_botName}_{_botVersion}_backup_{i + 1}.txt");
-                        if (File.Exists(oldBackup))
-                        {
-                            File.Move(oldBackup, newBackup);
-                        }
-                    }
-
-                    // Move current log to backup 1
-                    string firstBackup = Path.Combine(_logDirectory, $"{_botName}_{_botVersion}_backup_1.txt");
-                    File.Move(_currentLogFile, firstBackup);
-
-                    // Create new log file
-                    _currentLogFile = Path.Combine(_logDirectory, $"{_botName}_{_botVersion}_{DateTime.Now:yyyyMMdd_HHmmss}_cbot_log.txt");
+                    // Perform rotation without logging to prevent recursion/stack overflow
+                    PerformLogRotation();
                     
-                    Log("Log file rotation completed successfully", LogLevel.Info);
+                    // Create new log file with timestamp
+                    string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+                    _currentLogFile = Path.Combine(_logDirectory, $"{_botName}_{_botVersion}_{timestamp}_cbot_log.txt");
+                    
+                    _robot.Print("Log file rotation completed successfully");
                 }
             }
             catch (Exception ex)
             {
                 _robot.Print($"Error rotating log file: {ex.Message}");
+                // Try to continue with a new log file even if rotation failed
+                try
+                {
+                    string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+                    _currentLogFile = Path.Combine(_logDirectory, $"{_botName}_{_botVersion}_{timestamp}_emergency_log.txt");
+                    _robot.Print($"Created emergency log file: {_currentLogFile}");
+                }
+                catch (Exception emergencyEx)
+                {
+                    _robot.Print($"Failed to create emergency log file: {emergencyEx.Message}");
+                    // Disable file logging to prevent further issues
+                    _currentLogFile = null;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Performs the actual log rotation without any logging to prevent recursion
+        /// </summary>
+        private void PerformLogRotation()
+        {
+            try
+            {
+                // Delete oldest backup files to make room (delete oldest first)
+                for (int i = MaxBackupFiles; i >= MaxBackupFiles - 2; i--)
+                {
+                    string oldBackup = Path.Combine(_logDirectory, $"{_botName}_{_botVersion}_backup_{i}.txt");
+                    if (File.Exists(oldBackup))
+                    {
+                        File.Delete(oldBackup);
+                    }
+                }
+
+                // Shift existing backups (move from newest to oldest to avoid conflicts)
+                for (int i = MaxBackupFiles - 3; i >= 1; i--)
+                {
+                    string sourceBackup = Path.Combine(_logDirectory, $"{_botName}_{_botVersion}_backup_{i}.txt");
+                    string destBackup = Path.Combine(_logDirectory, $"{_botName}_{_botVersion}_backup_{i + 1}.txt");
+                    if (File.Exists(sourceBackup))
+                    {
+                        // Ensure destination doesn't exist before moving
+                        if (File.Exists(destBackup))
+                        {
+                            File.Delete(destBackup);
+                        }
+                        File.Move(sourceBackup, destBackup);
+                    }
+                }
+
+                // Move current log to backup 1
+                string firstBackup = Path.Combine(_logDirectory, $"{_botName}_{_botVersion}_backup_1.txt");
+                if (File.Exists(firstBackup))
+                {
+                    File.Delete(firstBackup);
+                }
+                File.Move(_currentLogFile, firstBackup);
+            }
+            catch (Exception ex)
+            {
+                _robot.Print($"Error during log rotation process: {ex.Message}");
+                // Don't throw - let the caller handle creating a new log file
             }
         }
 
@@ -130,8 +174,25 @@ namespace cAlgo.Robots.Utils
                 {
                     lock (_lockObject)
                     {
-                        RotateLogFileIfNeeded();
+                        // Check rotation first, but handle errors gracefully
+                        try
+                        {
+                            RotateLogFileIfNeeded();
+                        }
+                        catch (Exception rotationEx)
+                        {
+                            // If rotation fails, continue with current file
+                            _robot.Print($"Log rotation failed, continuing with current file: {rotationEx.Message}");
+                        }
 
+                        // Ensure we still have a valid log file
+                        if (string.IsNullOrEmpty(_currentLogFile))
+                        {
+                            _robot.Print("No valid log file available, skipping file logging for this message");
+                            return;
+                        }
+
+                        // Write to file with proper disposal
                         using (var fileStream = new FileStream(_currentLogFile, FileMode.Append, FileAccess.Write, FileShare.Read))
                         using (var writer = new StreamWriter(fileStream))
                         {
@@ -141,24 +202,47 @@ namespace cAlgo.Robots.Utils
                     }
                     success = true;
                 }
-                catch (IOException)
+                catch (UnauthorizedAccessException accessEx)
+                {
+                    _robot.Print($"Access denied to log file: {accessEx.Message}");
+                    break; // Don't retry on access denied
+                }
+                catch (DirectoryNotFoundException dirEx)
+                {
+                    _robot.Print($"Log directory not found: {dirEx.Message}");
+                    // Try to recreate directory
+                    try
+                    {
+                        Directory.CreateDirectory(_logDirectory);
+                        retryCount++; // Retry after recreating directory
+                    }
+                    catch
+                    {
+                        break; // Give up if can't create directory
+                    }
+                }
+                catch (IOException ioEx)
                 {
                     retryCount++;
                     if (retryCount < MaxRetries)
                     {
                         Thread.Sleep(RetryDelayMs);
                     }
+                    else
+                    {
+                        _robot.Print($"IO Error after {MaxRetries} attempts: {ioEx.Message}");
+                    }
                 }
                 catch (Exception ex)
                 {
-                    _robot.Print($"Error writing to log file: {ex.Message}");
-                    break;
+                    _robot.Print($"Unexpected error writing to log file: {ex.Message}");
+                    break; // Don't retry on unexpected errors
                 }
             }
 
             if (!success)
             {
-                _robot.Print($"Failed to write to log file after {MaxRetries} attempts. Message: {message}");
+                _robot.Print($"Failed to write to log file after {MaxRetries} attempts. Message will be lost: {message.Substring(0, Math.Min(100, message.Length))}...");
             }
         }
 
