@@ -23,6 +23,17 @@ Error Handling and Debugging
 - Implement custom logging or status messages to improve the development and monitoring experience.
 - Use `ChartObjects` to draw debug information directly on the chart during backtesting or live trading if helpful.
 
+Comprehensive Logging Requirements
+- MANDATORY: Every significant process, method entry/exit, and state change MUST be logged using the Logger service.
+- Log ALL trade decisions, entry/exit signals, risk calculations, and position management actions.
+- Include context in log messages: method name, parameters, calculated values, and decision rationale.
+- Use appropriate log levels: Debug for detailed flow, Info for important events, Warning for potential issues, Error for failures.
+- Log strategy initialization, parameter validation, indicator calculations, and performance metrics.
+- Every exception MUST be logged with full context using logger.Error() method.
+- For debugging purposes, log the start and completion of major operations with execution time where relevant.
+- Log all external API calls, file operations, and system interactions.
+- Example logging pattern: "Method: CalculatePositionSize | Symbol: EURUSD | Risk: 1% | Balance: 1000 | Result: 0.01 lots"
+
 Dependencies
 - cAlgo.API
 - .NET Framework (version compatible with cTrader)
@@ -79,6 +90,8 @@ Examples:
 - test: add unit tests for RiskManager position sizing logic
 
 ## Lessons
+- Comprehensive logging is MANDATORY for all processes - every method entry/exit, trade decision, calculation, and system interaction must be logged with full context for effective debugging and monitoring.
+- Use the Logger service with appropriate log levels (Debug, Info, Warning, Error) and include method names, parameters, and results in all log messages.
 - (Placeholder for future lessons)
 
 ## Scratchpad
