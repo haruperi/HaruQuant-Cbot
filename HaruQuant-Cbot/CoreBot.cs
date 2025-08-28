@@ -248,23 +248,20 @@ namespace cAlgo.Robots
 
         #endregion
 
-        // Logger instance for system-wide logging
+        // Core system services for error handling and logging
         private Logger _logger;
+        private ErrorHandler _errorHandler;
+        private CrashRecovery _crashRecovery;
 
         protected override void OnStart()
         {
             try
             {
-                // Initialize logger with user parameters
-                _logger = new Logger(
-                    robot: this,
-                    botName: BotConfig.BotName,
-                    botVersion: BotConfig.BotVersion,
-                    enableConsoleLogging: EnableConsoleLogging,
-                    enableFileLogging: EnableFileLogging,
-                    logFileName: LogFileName
-                );
-
+                // Initialize core system services in order
+                InitializeLogger();
+                InitializeErrorHandler();
+                InitializeCrashRecovery();
+                
                 _logger.Info("=== CoreBot Starting ===");
                 _logger.Info($"Bot: {BotConfig.BotName} v{BotConfig.BotVersion}");
                 _logger.Info($"Symbol: {Symbol.Name}");
@@ -283,16 +280,68 @@ namespace cAlgo.Robots
                 _logger.Info($"Trading Hours: {(UseTradingHours ? $"{TradingHourStart} to {TradingHourEnd}" : "24/7")}");
                 _logger.Info($"Trading Direction: {TradingDirection}");
                 
+                // Perform initial system health check
+                var systemHealth = _errorHandler.GetSystemHealth();
+                _logger.Info($"Initial System Health: {systemHealth}");
+                
                 _logger.Info("CoreBot initialization completed successfully");
+                
+                // Log successful startup to error handler
+                _errorHandler.HandleError(ErrorCategory.System, ErrorSeverity.Low, 
+                    "CoreBot started successfully", context: "OnStart completion", attemptRecovery: false);
             }
             catch (Exception ex)
             {
-                Print($"Error during OnStart: {ex.Message}");
-                if (_logger != null)
+                Print($"CRITICAL ERROR during OnStart: {ex.Message}");
+                
+                // Handle startup errors with fallback logging
+                if (_errorHandler != null)
+                {
+                    _errorHandler.HandleException(ex, "OnStart initialization failure", attemptRecovery: true);
+                }
+                else if (_logger != null)
                 {
                     _logger.Error("Error during OnStart", ex);
                 }
+                
+                // Re-throw to ensure cTrader is aware of the startup failure
+                throw;
             }
+        }
+
+        /// <summary>
+        /// Initializes the Logger service with user parameters
+        /// </summary>
+        private void InitializeLogger()
+        {
+            _logger = new Logger(
+                robot: this,
+                botName: BotConfig.BotName,
+                botVersion: BotConfig.BotVersion,
+                enableConsoleLogging: EnableConsoleLogging,
+                enableFileLogging: EnableFileLogging,
+                logFileName: LogFileName
+            );
+            
+            _logger.Info("Logger service initialized successfully");
+        }
+
+        /// <summary>
+        /// Initializes the ErrorHandler service
+        /// </summary>
+        private void InitializeErrorHandler()
+        {
+            _errorHandler = new ErrorHandler(this, _logger);
+            _logger.Info("ErrorHandler service initialized successfully");
+        }
+
+        /// <summary>
+        /// Initializes the CrashRecovery service
+        /// </summary>
+        private void InitializeCrashRecovery()
+        {
+            _crashRecovery = new CrashRecovery(this, _logger, _errorHandler);
+            _logger.Info("CrashRecovery service initialized successfully");
         }
 
         protected override void OnTick()
@@ -304,11 +353,20 @@ namespace cAlgo.Robots
                 if (Bars.TickVolumes.Count % 1000 == 0)
                 {
                     _logger?.Debug($"OnTick processed - Tick count: {Bars.TickVolumes.Count}");
+                    
+                    // Check if system is in recovery mode
+                    if (_crashRecovery?.IsInRecoveryMode() == true)
+                    {
+                        _logger?.Debug("System in recovery mode - OnTick processing limited");
+                        return;
+                    }
                 }
+                
+                // Future: Main tick processing logic will be implemented here
             }
             catch (Exception ex)
             {
-                _logger?.Error("Error in OnTick", ex);
+                _errorHandler?.HandleException(ex, "OnTick processing failure", attemptRecovery: true);
             }
         }
 
@@ -318,12 +376,22 @@ namespace cAlgo.Robots
             {
                 _logger?.Debug($"OnBar - New bar opened at {Bars.OpenTimes.LastValue} | Open: {Bars.OpenPrices.LastValue:F5} | Close: {Bars.ClosePrices.LastValue:F5}");
                 
+                // Check system health before proceeding with strategy logic
+                var systemHealth = _errorHandler?.GetSystemHealth() ?? SystemHealth.Healthy;
+                if (systemHealth >= SystemHealth.Critical)
+                {
+                    _logger?.Warning($"System health is {systemHealth} - limiting OnBar processing");
+                    return;
+                }
+                
                 // OnBar strategy logic will be implemented here
                 // This is where main trading logic will execute
+                
+                // Future: Strategy execution logic will be added here
             }
             catch (Exception ex)
             {
-                _logger?.Error("Error in OnBar", ex);
+                _errorHandler?.HandleException(ex, "OnBar processing failure", attemptRecovery: true);
             }
         }
 
@@ -332,11 +400,34 @@ namespace cAlgo.Robots
             try
             {
                 _logger?.Info("=== CoreBot Stopping ===");
+                
+                // Log final system statistics
+                if (_errorHandler != null)
+                {
+                    var systemHealth = _errorHandler.GetSystemHealth();
+                    _logger?.Info($"Final System Health: {systemHealth}");
+                    
+                    // Log error statistics
+                    foreach (ErrorCategory category in Enum.GetValues(typeof(ErrorCategory)))
+                    {
+                        var errorCount = _errorHandler.GetErrorCount(category);
+                        if (errorCount > 0)
+                        {
+                            _logger?.Info($"Error Count [{category}]: {errorCount}");
+                        }
+                    }
+                }
+                
+                // Log final account information
                 _logger?.Info($"Final Account Balance: {Account.Balance:F2} {Account.Asset.Name}");
                 _logger?.Info($"Open Positions: {Positions.Count}");
                 _logger?.Info($"Pending Orders: {PendingOrders.Count}");
                 
-                // Cleanup and flush logger
+                // Dispose of system services
+                _crashRecovery?.Dispose();
+                
+                // Final log entry and cleanup
+                _logger?.Info("CoreBot shutdown completed successfully");
                 _logger?.Flush();
                 
                 Print("CoreBot stopped successfully");
@@ -344,7 +435,19 @@ namespace cAlgo.Robots
             catch (Exception ex)
             {
                 Print($"Error during OnStop: {ex.Message}");
-                _logger?.Error("Error during OnStop", ex);
+                
+                // Final attempt to log shutdown error
+                try
+                {
+                    _errorHandler?.HandleException(ex, "OnStop shutdown failure", attemptRecovery: false);
+                    _logger?.Error("Error during OnStop", ex);
+                    _logger?.Flush();
+                }
+                catch
+                {
+                    // Ignore errors during error handling in shutdown
+                    Print("Failed to log shutdown error");
+                }
             }
         }
     }

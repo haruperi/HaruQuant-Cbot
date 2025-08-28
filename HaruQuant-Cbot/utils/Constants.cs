@@ -153,4 +153,43 @@ namespace cAlgo.Robots.Utils
         Martingale = 3,
         Grid = 4
     }
+
+    public enum ErrorSeverity
+    {
+        Low = 0,        // Minor issues, continue operation
+        Medium = 1,     // Moderate issues, log and monitor
+        High = 2,       // Serious issues, may require intervention
+        Critical = 3    // System-threatening, immediate action required
+    }
+
+    public enum ErrorCategory
+    {
+        System = 0,         // System-level errors
+        Trading = 1,        // Trading operation errors
+        Network = 2,        // Network/connectivity errors
+        Data = 3,           // Data processing errors
+        Strategy = 4,       // Strategy execution errors
+        Risk = 5,           // Risk management errors
+        Configuration = 6,  // Configuration/parameter errors
+        External = 7        // External service errors
+    }
+
+    public enum RecoveryAction
+    {
+        None = 0,           // No recovery action needed
+        Retry = 1,          // Retry the operation
+        Fallback = 2,       // Use fallback mechanism
+        Restart = 3,        // Restart component
+        Alert = 4,          // Alert user/admin
+        Stop = 5            // Stop operation
+    }
+
+    public enum SystemHealth
+    {
+        Healthy = 0,        // All systems operating normally
+        Warning = 1,        // Minor issues detected
+        Degraded = 2,       // Performance impacted
+        Critical = 3,       // Major issues, limited functionality
+        Failed = 4          // System failure, requires intervention
+    }
 }
