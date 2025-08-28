@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using cAlgo.API;
 using cAlgo.Robots.Utils;
@@ -216,13 +217,7 @@ namespace cAlgo.Robots.Utils
                     return ErrorCategory.Configuration;
                     
                 case TimeoutException _:
-                case System.Net.NetworkInformation.PingException _:
                     return ErrorCategory.Network;
-                    
-                case System.IO.IOException _:
-                case System.IO.DirectoryNotFoundException _:
-                case UnauthorizedAccessException _:
-                    return ErrorCategory.System;
                     
                 case DivideByZeroException _:
                 case ArithmeticException _:
@@ -230,8 +225,8 @@ namespace cAlgo.Robots.Utils
                     
                 case OutOfMemoryException _:
                 case StackOverflowException _:
-                    return ErrorCategory.System;
-                    
+                case System.IO.IOException _:
+                case UnauthorizedAccessException _:
                 default:
                     return ErrorCategory.System;
             }

@@ -18,8 +18,8 @@ namespace cAlgo.Robots.Utils
         private readonly Logger _logger;
         private readonly ErrorHandler _errorHandler;
         private readonly object _lockObject = new object();
-        private readonly Timer _healthCheckTimer;
-        private readonly Timer _recoveryTimer;
+        private readonly System.Threading.Timer _healthCheckTimer;
+        private readonly System.Threading.Timer _recoveryTimer;
         
         // System state tracking
         private bool _isRecoveryMode = false;
@@ -80,8 +80,8 @@ namespace cAlgo.Robots.Utils
             InitializeComponentTracking();
             
             // Start health monitoring timers with thread-safe invocation
-            _healthCheckTimer = new Timer(PerformHealthCheck, null, _healthCheckInterval, _healthCheckInterval);
-            _recoveryTimer = new Timer(ProcessRecoveryQueue, null, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
+            _healthCheckTimer = new System.Threading.Timer(PerformHealthCheck, null, _healthCheckInterval, _healthCheckInterval);
+            _recoveryTimer = new System.Threading.Timer(ProcessRecoveryQueue, null, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
             
             _logger.Info("CrashRecovery system initialized successfully");
         }
