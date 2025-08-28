@@ -248,24 +248,104 @@ namespace cAlgo.Robots
 
         #endregion
 
+        // Logger instance for system-wide logging
+        private Logger _logger;
+
         protected override void OnStart()
         {
-            Print("OnStart");
+            try
+            {
+                // Initialize logger with user parameters
+                _logger = new Logger(
+                    robot: this,
+                    botName: BotConfig.BotName,
+                    botVersion: BotConfig.BotVersion,
+                    enableConsoleLogging: EnableConsoleLogging,
+                    enableFileLogging: EnableFileLogging,
+                    logFileName: LogFileName
+                );
+
+                _logger.Info("=== CoreBot Starting ===");
+                _logger.Info($"Bot: {BotConfig.BotName} v{BotConfig.BotVersion}");
+                _logger.Info($"Symbol: {Symbol.Name}");
+                _logger.Info($"Account: {Account.Number} ({Account.BrokerName})");
+                _logger.Info($"Trading Mode: {MyTradingMode}");
+                _logger.Info($"Active Strategy: {ActiveStrategy}");
+                _logger.Info($"Symbols to Trade: {SymbolsToTrade}");
+                
+                if (SymbolsToTrade == SymbolsToTrade.Custom && !string.IsNullOrEmpty(CustomSymbols))
+                {
+                    _logger.Info($"Custom Symbols: {CustomSymbols}");
+                }
+
+                _logger.Info($"Risk Management - Base: {RiskBase}, Size Mode: {RiskSizeMode}");
+                _logger.Info($"Risk Per Trade: {RiskPerTrade}%");
+                _logger.Info($"Trading Hours: {(UseTradingHours ? $"{TradingHourStart} to {TradingHourEnd}" : "24/7")}");
+                _logger.Info($"Trading Direction: {TradingDirection}");
+                
+                _logger.Info("CoreBot initialization completed successfully");
+            }
+            catch (Exception ex)
+            {
+                Print($"Error during OnStart: {ex.Message}");
+                if (_logger != null)
+                {
+                    _logger.Error("Error during OnStart", ex);
+                }
+            }
         }
 
         protected override void OnTick()
         {
-            Print("OnTick");
+            try
+            {
+                // OnTick logic will be implemented here
+                // For now, just log occasionally to avoid spam
+                if (Bars.TickVolumes.Count % 1000 == 0)
+                {
+                    _logger?.Debug($"OnTick processed - Tick count: {Bars.TickVolumes.Count}");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.Error("Error in OnTick", ex);
+            }
         }
 
         protected override void OnBar()
         {
-            Print("OnBar");
+            try
+            {
+                _logger?.Debug($"OnBar - New bar opened at {Bars.OpenTimes.LastValue} | Open: {Bars.OpenPrices.LastValue:F5} | Close: {Bars.ClosePrices.LastValue:F5}");
+                
+                // OnBar strategy logic will be implemented here
+                // This is where main trading logic will execute
+            }
+            catch (Exception ex)
+            {
+                _logger?.Error("Error in OnBar", ex);
+            }
         }
 
         protected override void OnStop()
         {
-            Print("OnStop");
+            try
+            {
+                _logger?.Info("=== CoreBot Stopping ===");
+                _logger?.Info($"Final Account Balance: {Account.Balance:F2} {Account.Asset.Name}");
+                _logger?.Info($"Open Positions: {Positions.Count}");
+                _logger?.Info($"Pending Orders: {PendingOrders.Count}");
+                
+                // Cleanup and flush logger
+                _logger?.Flush();
+                
+                Print("CoreBot stopped successfully");
+            }
+            catch (Exception ex)
+            {
+                Print($"Error during OnStop: {ex.Message}");
+                _logger?.Error("Error during OnStop", ex);
+            }
         }
     }
 }

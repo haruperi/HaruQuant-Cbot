@@ -82,57 +82,55 @@ Examples:
 - (Placeholder for future lessons)
 
 ## Scratchpad
-Current Task: Add comprehensive user parameters to CoreBot.cs
+Current Task: Create Logger.cs for system-wide logging service
 
 Task Breakdown:
 [X] Update .cursorrules Scratchpad with new task
-[X] Add necessary using statements for Constants.cs
-[X] Add comprehensive parameter sections to CoreBot.cs
-[X] Implement Identity parameters
-[X] Implement System Settings parameters
-[X] Implement Strategy parameters
-[X] Implement Risk Management parameters
-[X] Implement Trading Settings parameters
-[X] Implement Notification Settings parameters
-[X] Implement Display Settings parameters
-[X] Verify compilation and parameter references (no linting errors)
+[X] Create Logger.cs in utils directory with comprehensive logging features
+[X] Integrate Logger into CoreBot.cs with parameter-based configuration
+[X] Add logger initialization in OnStart() method
+[X] Add logger cleanup in OnStop() method
+[X] Update lifecycle methods with logging statements
+[X] Verify compilation and logging functionality (no linting errors)
 
 Task Context:
-- Adding comprehensive cBot parameter system for user configuration
-- Utilizing Constants.cs enums for type-safe parameter configuration
-- Organizing parameters into logical groups for better UX
-- Establishing foundation for configurable trading behavior
-- Integrating with existing Constants.cs for consistency
+- Creating comprehensive logging service for system-wide use
+- Implementing both console and file logging with rotation
+- Utilizing Constants.cs LogLevel enum for type-safe logging
+- Integrating with CoreBot parameters for user configuration
+- Establishing foundation for debugging and monitoring across all modules
 
 Previous Completed Work:
+✅ COREBOT PARAMETER SYSTEM COMPLETED:
+- [X] Added comprehensive parameter system to CoreBot.cs
+- [X] Implemented 75+ parameters across 7 logical groups
+- [X] Full integration with Constants.cs enums
+- [X] Type-safe parameter configuration
+- [X] Verified compilation with no linting errors
+- [X] Committed with conventional commit practices
+
 ✅ CONSTANTS IMPLEMENTATION COMPLETED:
 - [X] Created utils/Constants.cs with system-wide configuration
 - [X] Added BotConfig class with bot identity and symbol arrays
-- [X] Implemented comprehensive trading enums
+- [X] Implemented comprehensive trading enums including LogLevel
 - [X] Verified compilation with no linting errors
-- [X] Committed with conventional commit practices
 
 ✅ ENTRY POINT REFACTORING COMPLETED:
 - [X] Renamed HaruQuant-Cbot.cs to CoreBot.cs
 - [X] Updated class name from HaruQuantCbot to CoreBot
 - [X] Updated git commit guidelines in .cursorrules
-- [X] Applied proper conventional commit practices
 
 ✅ TRADING MODULE COMPLETED: Full trading infrastructure ready
 - [X] RiskManager.cs - Position sizing, validation, risk management
 - [X] TradeManager.cs - Trade execution, trailing stops, position management
 - [X] Full integration with CoreBot parameters and error handling
-- [X] Complete documentation and validation systems
 
 ✅ STRATEGY MODULE COMPLETED: Full strategy framework implemented
 - [X] StrategyBase.cs - Abstract base class with comprehensive CoreBot integration
 - [X] NaiveTrend.cs - Triple MA strategy with proper crossover logic
 - [X] Full integration with RiskManager and TradeManager
-- [X] Comprehensive documentation and usage guide
-- [X] Error handling and logging throughout strategy framework
-- [X] CoreBot integration with automatic strategy initialization
 
-Ready for: CoreBot parameter system implementation
+Ready for: Logger implementation and Core Bot Module completion
 
 # cTrader cBot Implementation Todo List
 
