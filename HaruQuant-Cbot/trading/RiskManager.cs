@@ -4,9 +4,17 @@ using cAlgo.Robots.Utils;
 
 namespace cAlgo.Robots.Trading
 {
-    /// <summary>
-    /// Manages risk-related calculations and trading constraints
-    /// </summary>
+    /***
+        RiskManager handles all risk-related calculations and trading constraints.
+        
+        This class provides centralized risk management functionality including:
+        - Position sizing based on risk parameters
+        - Trading hours validation
+        - Stop loss and take profit calculation
+        - Account value retrieval for risk calculations
+        
+        All calculations are logged and include proper error handling with fallback values.
+    ***/
     public class RiskManager
     {
         private readonly Robot _robot;
@@ -20,11 +28,26 @@ namespace cAlgo.Robots.Trading
             _logger.Info("RiskManager initialized successfully");
         }
 
-        /// <summary>
-        /// Checks if current time is within trading hours
-        /// </summary>
         public bool IsWithinTradingHours(bool useTradingHours, HourOfDay tradingHourStart, HourOfDay tradingHourEnd)
         {
+            /***
+                Validates if the current server time falls within the specified trading hours.
+                
+                Args:
+                    useTradingHours: Boolean flag to enable/disable trading hours restriction
+                    tradingHourStart: Starting hour for trading (0-23)
+                    tradingHourEnd: Ending hour for trading (0-23)
+                
+                Returns:
+                    true if trading is allowed at current time, false otherwise.
+                    Always returns true if useTradingHours is false.
+                
+                Notes:
+                    - Handles overnight trading sessions (e.g., 22:00 to 06:00)
+                    - Uses server time for validation
+                    - Hour comparison is inclusive of start and end hours
+            ***/
+            
             if (!useTradingHours)
                 return true;
 
@@ -43,9 +66,6 @@ namespace cAlgo.Robots.Trading
             }
         }
 
-        /// <summary>
-        /// Calculates position size based on risk management settings
-        /// </summary>
         public long CalculatePositionSize(
             RiskDefaultSize riskSizeMode,
             double defaultPositionSize,
@@ -55,6 +75,29 @@ namespace cAlgo.Robots.Trading
             RiskBase riskBase,
             double fixedRiskBalance)
         {
+            /***
+                Calculates the position size in volume units based on risk management parameters.
+                
+                Args:
+                    riskSizeMode: The sizing method (FixedLots, Auto, FixedAmount, FixedLotsStep)
+                    defaultPositionSize: Default position size in lots for fixed lot sizing
+                    riskPerTrade: Risk percentage per trade (1.0 = 1% risk)
+                    defaultStopLoss: Stop loss distance in pips for auto sizing
+                    fixedRiskAmount: Fixed monetary amount to risk for fixed amount sizing
+                    riskBase: Account base for risk calculation (Equity, Balance, FreeMargin, FixedBalance)
+                    fixedRiskBalance: Fixed balance value when using FixedBalance risk base
+                
+                Returns:
+                    Position size in volume units (long), normalized and rounded.
+                    Returns default position size in case of calculation errors.
+                
+                Notes:
+                    - Auto mode calculates size based on risk percentage and stop loss
+                    - FixedAmount mode converts monetary amount to lot size
+                    - All volumes are normalized using symbol specifications
+                    - Calculation is logged for debugging purposes
+            ***/
+            
             try
             {
                 double volumeInUnits;
@@ -106,11 +149,25 @@ namespace cAlgo.Robots.Trading
             }
         }
 
-        /// <summary>
-        /// Gets account value based on risk base setting
-        /// </summary>
         public double GetAccountValue(RiskBase riskBase, double fixedRiskBalance)
         {
+            /***
+                Retrieves the account value to use for risk calculations based on the risk base setting.
+                
+                Args:
+                    riskBase: The account metric to use (Equity, Balance, FreeMargin, FixedBalance)
+                    fixedRiskBalance: Fixed balance value when using FixedBalance mode
+                
+                Returns:
+                    Account value in base currency for risk calculations.
+                    Defaults to account equity if invalid risk base provided.
+                
+                Notes:
+                    - Equity: Current account equity (balance + unrealized P&L)
+                    - Balance: Account balance (realized P&L only)
+                    - FreeMargin: Available margin for new trades
+                    - FixedBalance: User-defined fixed balance for consistent sizing
+            ***/
             switch (riskBase)
             {
                 case RiskBase.Equity:
@@ -126,9 +183,6 @@ namespace cAlgo.Robots.Trading
             }
         }
 
-        /// <summary>
-        /// Calculates stop loss and take profit levels
-        /// </summary>
         public (double? stopLoss, double? takeProfit) CalculateStopLossAndTakeProfit(
             TradeType tradeType,
             StopLossMode stopLossMode,
@@ -136,6 +190,31 @@ namespace cAlgo.Robots.Trading
             int defaultStopLoss,
             int defaultTakeProfit)
         {
+            /***
+                Calculates stop loss and take profit price levels for a trade.
+                
+                Args:
+                    tradeType: Direction of the trade (Buy or Sell)
+                    stopLossMode: Stop loss calculation method (Fixed, None, UseATR, UseADR)
+                    takeProfitMode: Take profit calculation method (Fixed, None, UseATR, UseADR)
+                    defaultStopLoss: Stop loss distance in pips for fixed mode
+                    defaultTakeProfit: Take profit distance in pips for fixed mode
+                
+                Returns:
+                    Tuple containing:
+                    - stopLoss: Stop loss price level (null if mode is None)
+                    - takeProfit: Take profit price level (null if mode is None)
+                    
+                    Returns (null, null) if calculation errors occur.
+                
+                Notes:
+                    - Prices are calculated from current Ask (Buy) or Bid (Sell) prices
+                    - Stop loss is placed opposite to trade direction
+                    - Take profit is placed in trade direction
+                    - All prices are normalized to symbol digit precision
+                    - Currently only supports Fixed mode, ATR/ADR modes reserved for future enhancement
+            ***/
+            
             try
             {
                 double? stopLoss = null;
