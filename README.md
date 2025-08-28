@@ -289,3 +289,26 @@ The primary goal of the crash recovery mechanism is to allow the cBot to:
 *   **State File Versioning (Advanced)**: For long-term maintenance, if the structure of `BotState.cs` changes significantly, consider implementing a versioning system for the state file to handle upgrades or migrations gracefully.
 
 This crash recovery mechanism significantly enhances the cBot's resilience and reliability. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+PARAMETER TESTING
+
+Risk Management
+
+Risk Base
+Risk Size 
+
+

@@ -475,41 +475,19 @@ namespace cAlgo.Robots
         {
             try
             {
-                // Calculate position size for validation
-                var volumeInUnits = _riskManager.CalculatePositionSize(
-                    RiskSizeMode, DefaultPositionSize, RiskPerTrade, DefaultStopLoss, FixedRiskAmount, RiskBase, FixedRiskBalance);
-                
-                var positionSizeInLots = Symbol.VolumeInUnitsToQuantity(volumeInUnits);
-                
-                // Validate trade before execution
-                var isTradeValid = _riskManager.ValidateTrade(
-                    Symbol,
-                    positionSizeInLots,
-                    DefaultStopLoss,
-                    tradeType,
-                    UseTradingHours,
-                    TradingHourStart,
-                    TradingHourEnd,
-                    TradingDirection,
-                    MaxSpreadInPips);
+
+                var (isTradeValid, positionSize, stopLoss, takeProfit) = _riskManager.Run(Symbol, DefaultStopLoss, tradeType, UseTradingHours, TradingHourStart, TradingHourEnd, TradingDirection, MaxSpreadInPips, RiskSizeMode, DefaultPositionSize, RiskPerTrade, FixedRiskAmount, RiskBase, FixedRiskBalance, StopLossMode, DefaultStopLoss, TakeProfitMode, DefaultTakeProfit, StopLossMultiplier, TakeProfitMultiplier, ADRRatio, ADRPeriod, ATRPeriod, RiskPerTrade, LotIncrease, BalanceIncrease);
                 
                 if (!isTradeValid)
                 {
                     _logger?.Warning($"Trade validation failed for {tradeType} order. Trade cancelled.");
                     return;
                 }
-                
-                // Calculate stop loss and take profit
-                var (stopLoss, takeProfit) = _riskManager.CalculateStopLossAndTakeProfit(
-                    tradeType, StopLossMode, TakeProfitMode, DefaultStopLoss, DefaultTakeProfit);
 
                 _logger?.Info($"Executing {tradeType} order:");
-                _logger?.Info($"  Volume: {volumeInUnits} units");
-                _logger?.Info($"  Stop Loss: {stopLoss:F5}");
-                _logger?.Info($"  Take Profit: {takeProfit:F5}");
 
                 // Execute the trade
-                var result = ExecuteMarketOrder(tradeType, Symbol.Name, volumeInUnits, OrderLabel, stopLoss, takeProfit);
+                var result = ExecuteMarketOrder(tradeType, Symbol.Name, positionSize, OrderLabel, stopLoss, takeProfit);
 
                 if (result.IsSuccessful)
                 {

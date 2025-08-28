@@ -29,52 +29,114 @@ namespace cAlgo.Robots.Trading
             _logger.Info("RiskManager initialized successfully");
         }
 
-        public bool IsWithinTradingHours(bool useTradingHours, HourOfDay tradingHourStart, HourOfDay tradingHourEnd)
-        {
-            /***
-                Validates if the current server time falls within the specified trading hours.
-                
-                Args:
-                    useTradingHours: Boolean flag to enable/disable trading hours restriction
-                    tradingHourStart: Starting hour for trading (0-23)
-                    tradingHourEnd: Ending hour for trading (0-23)
-                
-                Returns:
-                    true if trading is allowed at current time, false otherwise.
-                    Always returns true if useTradingHours is false.
-                
-                Notes:
-                    - Handles overnight trading sessions (e.g., 22:00 to 06:00)
-                    - Uses server time for validation
-                    - Hour comparison is inclusive of start and end hours
-            ***/
-            
-            if (!useTradingHours)
-                return true;
-
-            var currentHour = _robot.Server.Time.Hour;
-            var startHour = (int)tradingHourStart;
-            var endHour = (int)tradingHourEnd;
-
-            if (startHour <= endHour)
-            {
-                return currentHour >= startHour && currentHour <= endHour;
-            }
-            else
-            {
-                // Handle overnight trading hours (e.g., 22:00 to 06:00)
-                return currentHour >= startHour || currentHour <= endHour;
-            }
-        }
-
-        public long CalculatePositionSize(
+        public (bool isTradeValid, double positionSize, double stopLoss, double takeProfit) Run (
+            Symbol symbol, 
+            double stopLossPips, 
+            TradeType tradeType,
+            bool useTradingHours,
+            HourOfDay tradingHourStart,
+            HourOfDay tradingHourEnd,
+            TradingDirection tradingDirection,
+            double maxSpreadInPips,
             RiskDefaultSize riskSizeMode,
             double defaultPositionSize,
             double riskPerTrade,
-            int defaultStopLoss,
             double fixedRiskAmount,
             RiskBase riskBase,
-            double fixedRiskBalance)
+            double fixedRiskBalance,
+            StopLossMode stopLossMode,
+            int defaultStopLoss,
+            TakeProfitMode takeProfitMode,
+            int defaultTakeProfit,
+            double stopLossMultiplier,
+            double takeProfitMultiplier,
+            double adrRatio,
+            int adrPeriod,
+            int atrPeriod,
+            double maxRiskPerTrade,
+            double lotIncrease,
+            double balanceIncrease)
+        {
+            try
+            {
+                if (!ValidateTrade(symbol, defaultPositionSize, stopLossPips, tradeType, useTradingHours, tradingHourStart, tradingHourEnd, tradingDirection, maxSpreadInPips))
+                {
+                    return (false, 0, 0, 0);
+                }
+
+                var (stopLoss, takeProfit) = CalculateTargets(symbol, tradeType, stopLossMode, defaultStopLoss, takeProfitMode, defaultTakeProfit, stopLossMultiplier, takeProfitMultiplier, adrRatio, adrPeriod, atrPeriod);
+
+                var positionSize = CalculatePositionSize(symbol, riskSizeMode, defaultPositionSize, riskPerTrade, stopLoss, fixedRiskAmount, riskBase, fixedRiskBalance, maxRiskPerTrade, lotIncrease, balanceIncrease);
+
+                _logger?.Debug($"Exiting RiskManager.Run()");
+                _logger?.Debug($"ValidateTrade() Return Value: TRUE");
+                _logger?.Debug($"CalculateTargets() Return Value: Stop Loss: {stopLoss} pips, Take Profit: {takeProfit} pips");
+                _logger?.Debug($"CalculatePositionSize() Return Value: Position Size: {positionSize} volume units");
+
+                return (true, positionSize, stopLoss, takeProfit);
+            }
+            catch (Exception ex)
+            {
+                _logger.Error($"Error running risk manager: {ex.Message}", ex);
+                return (false, 0, 0, 0);
+            }
+        }
+
+        public (int stopLoss, int takeProfit) CalculateTargets(Symbol symbol, TradeType tradeType, StopLossMode stopLossMode, int defaultStopLoss, TakeProfitMode takeProfitMode, int defaultTakeProfit, double stopLossMultiplier, double takeProfitMultiplier, double adrRatio, int adrPeriod, int atrPeriod)
+        {
+
+            int stopLoss = 0;
+            int takeProfit = 0;
+
+            switch (stopLossMode)
+            {
+                case StopLossMode.Fixed:
+                    stopLoss = defaultStopLoss;
+                    break;
+                case StopLossMode.UseATR:
+                    stopLoss = CalculateATRBasedValue(symbol, atrPeriod, stopLossMultiplier, 1.0, defaultStopLoss, "ATR Stop Loss", false);
+                    break;
+                case StopLossMode.UseADR:
+                    stopLoss = CalculateATRBasedValue(symbol, adrPeriod, stopLossMultiplier, adrRatio, defaultStopLoss, "ADR Stop Loss", true);
+                    break;
+                case StopLossMode.None:
+                    stopLoss = 0;
+                    break;
+            }
+
+            switch (takeProfitMode)
+            {
+                case TakeProfitMode.Fixed:
+                    takeProfit = defaultTakeProfit;
+                    break;
+                case TakeProfitMode.UseATR:
+                    takeProfit = CalculateATRBasedValue(symbol, atrPeriod, takeProfitMultiplier, 1.0, defaultTakeProfit, "ATR Take Profit", false);
+                    break;
+                case TakeProfitMode.UseADR:
+                    takeProfit = CalculateATRBasedValue(symbol, adrPeriod, takeProfitMultiplier, adrRatio, defaultTakeProfit, "ADR Take Profit", true);
+                    break;
+                case TakeProfitMode.None:
+                    takeProfit = 0;
+                    break;
+            }
+
+            _logger?.Debug($"Stop Loss: {stopLoss} pips, Take Profit: {takeProfit} pips");
+
+            return (stopLoss, takeProfit);
+        }
+
+        public long CalculatePositionSize(
+            Symbol symbol,
+            RiskDefaultSize riskSizeMode,
+            double defaultPositionSize,
+            double riskPerTrade,
+            int stopLoss,
+            double fixedRiskAmount,
+            RiskBase riskBase,
+            double fixedRiskBalance,
+            double maxRiskPerTrade,
+            double lotIncrease,
+            double balanceIncrease)
         {
             /***
                 Calculates the position size in volume units based on risk management parameters.
@@ -101,52 +163,168 @@ namespace cAlgo.Robots.Trading
             
             try
             {
-                double volumeInUnits;
+
+                double positionSizeLots, positionSizeVolume = 0;
 
                 switch (riskSizeMode)
                 {
-                    case RiskDefaultSize.FixedLots:
-                        volumeInUnits = _robot.Symbol.QuantityToVolumeInUnits(defaultPositionSize);
-                        break;
-
                     case RiskDefaultSize.Auto:
-                        // Calculate volume based on risk percentage
-                        var accountValue = GetAccountValue(riskBase, fixedRiskBalance);
-                        var riskAmount = accountValue * (riskPerTrade / 100.0);
-                        var stopLossInPips = defaultStopLoss;
-                        var stopLossValue = stopLossInPips * _robot.Symbol.PipValue * _robot.Symbol.LotSize;
-                        
-                        if (stopLossValue > 0)
-                        {
-                            var lots = riskAmount / stopLossValue;
-                            volumeInUnits = _robot.Symbol.QuantityToVolumeInUnits(lots);
-                        }
-                        else
-                        {
-                            volumeInUnits = _robot.Symbol.QuantityToVolumeInUnits(defaultPositionSize);
-                        }
+                        positionSizeLots = CalculateAutoPositionSize(symbol, stopLoss, fixedRiskAmount, maxRiskPerTrade, fixedRiskBalance, fixedAmount:false, riskBase);
                         break;
-
+                    case RiskDefaultSize.FixedLots:
+                        positionSizeLots = defaultPositionSize;
+                        break;
                     case RiskDefaultSize.FixedAmount:
-                        volumeInUnits = _robot.Symbol.QuantityToVolumeInUnits(fixedRiskAmount / 100000.0); // Assuming standard lot conversion
+                        positionSizeLots = CalculateAutoPositionSize(symbol, stopLoss, fixedRiskAmount, maxRiskPerTrade, fixedRiskBalance, fixedAmount:true, riskBase);
                         break;
-
+                    case RiskDefaultSize.FixedLotsStep:
+                        positionSizeLots = CalculateStepBasedPositionSize(lotIncrease, balanceIncrease);
+                        break;
                     default:
-                        volumeInUnits = _robot.Symbol.QuantityToVolumeInUnits(defaultPositionSize);
+                        positionSizeLots = defaultPositionSize;
                         break;
                 }
 
-                // Normalize volume
-                volumeInUnits = _robot.Symbol.NormalizeVolumeInUnits(volumeInUnits, RoundingMode.Down);
-
-                _logger?.Debug($"Calculated position size: {volumeInUnits} units ({_robot.Symbol.VolumeInUnitsToQuantity(volumeInUnits)} lots)");
-
-                return (long)Math.Round(volumeInUnits);
+                // Normalize position size
+                positionSizeVolume = NormalizePositionSize(symbol, LotsToVolume(symbol, positionSizeLots));
+                return (long)Math.Round(positionSizeVolume);
             }
+
             catch (Exception ex)
             {
                 _logger?.Error("Error calculating position size", ex);
                 return (long)Math.Round(_robot.Symbol.QuantityToVolumeInUnits(defaultPositionSize));
+            }
+        }
+
+        private int CalculateATRBasedValue(
+            Symbol symbol, 
+            int period, 
+            double multiplier, 
+            double ratio, 
+            int defaultValue, 
+            string logPrefix, 
+            bool useDailyTimeframe)
+        {
+            /***
+                Calculates ATR or ADR based values for stop loss or take profit.
+                
+                Args:
+                    symbol: The trading symbol
+                    period: ATR/ADR period
+                    multiplier: Multiplier to apply to the ATR/ADR value
+                    ratio: Ratio to divide the ATR/ADR value (1.0 for ATR, custom for ADR)
+                    defaultValue: Fallback value if calculation fails
+                    logPrefix: Prefix for logging messages
+                    useDailyTimeframe: true for ADR (daily), false for ATR (current timeframe)
+                
+                Returns:
+                    Calculated value in pips as integer
+                
+                Notes:
+                    - ADR uses ATR on daily timeframe
+                    - ATR uses current timeframe
+                    - Both are converted to pips and apply multiplier/ratio
+                    - Falls back to default value on error
+            ***/
+            
+            try
+            {
+                double atrValue;
+                
+                if (useDailyTimeframe)
+                {
+                    // ADR: Use ATR on daily timeframe
+                    var dailyBars = _robot.MarketData.GetBars(TimeFrame.Daily, symbol.Name);
+                    var adrIndicator = _robot.Indicators.AverageTrueRange(dailyBars, period, MovingAverageType.Simple);
+                    atrValue = adrIndicator.Result.LastValue;
+                }
+                else
+                {
+                    // ATR: Use current timeframe
+                    var atr = _robot.Indicators.AverageTrueRange(period, MovingAverageType.Simple);
+                    atrValue = atr.Result.LastValue;
+                }
+                
+                // Convert to pips and apply ratio
+                var valueInPips = (atrValue / symbol.PipSize) / ratio;
+                
+                // Apply multiplier and convert to integer pips
+                var result = (int)Math.Round(valueInPips * multiplier);
+                
+                // Ensure minimum value
+                if (result < 1)
+                    result = defaultValue;
+                    
+                _logger?.Debug($"{logPrefix} calculated: Value={atrValue:F5}, Pips={valueInPips:F1}, Ratio={ratio}, Multiplier={multiplier}, Result={result} pips");
+                
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger?.Error($"Error calculating {logPrefix}: {ex.Message}", ex);
+                return defaultValue; // Fallback to default
+            }
+        }
+
+        private double CalculateAutoPositionSize(Symbol symbol, double stopLossPips, double fixedRiskAmount, double maxRiskPerTrade, double fixedRiskBalance, bool fixedAmount, RiskBase riskBase)
+        {
+            double contractSize = symbol.QuantityToVolumeInUnits(1.0);
+            double accountValue = GetAccountValue(riskBase, fixedRiskBalance);
+            double riskAmount = fixedAmount ? fixedRiskAmount : accountValue * (maxRiskPerTrade / 100.0);
+
+            double positionSizeLots = riskAmount / (stopLossPips * symbol.PipValue * contractSize);
+            return positionSizeLots;
+        }
+
+        private double CalculateStepBasedPositionSize(double lotIncrease, double balanceIncrease)
+        {
+            return lotIncrease * _robot.Account.Balance / balanceIncrease;
+        }
+
+
+        public static double VolumeToLots(Symbol symbol, double volumeInUnits)
+        {
+            // Converts volume in units to lots
+            // Params: volumeInUnits - Volume in units
+            // Returns: Volume in lots
+            return symbol.VolumeInUnitsToQuantity(volumeInUnits);
+        }
+
+        public static double LotsToVolume(Symbol symbol, double lots)
+        {
+            // Converts lots to volume in units
+            // Params: lots - Volume in lots
+            // Returns: Volume in units
+            return symbol.QuantityToVolumeInUnits(lots);
+        }
+
+        public double NormalizePositionSize(Symbol symbol, double positionSizeVolume)
+        {
+            // Normalizes position size according to symbol's specifications and configured limits
+            // Params: positionSizeVolume - Desired position size volume
+            // Returns: Normalized position size volume
+            try
+            {
+                // Ensure minimum volume
+                positionSizeVolume = Math.Max(positionSizeVolume, symbol.VolumeInUnitsMin);
+
+                // Ensure maximum volume
+                positionSizeVolume = Math.Min(positionSizeVolume, symbol.VolumeInUnitsMax);
+
+                // Round to nearest step
+                double step = symbol.VolumeInUnitsStep;
+                positionSizeVolume = Math.Round(positionSizeVolume / step) * step;
+
+                // Ensure volume is within symbol's limits
+                positionSizeVolume = symbol.NormalizeVolumeInUnits(positionSizeVolume);
+
+                return positionSizeVolume;
+            }
+            catch (Exception ex)
+            {
+                _logger?.Error($"Error normalizing position size for {symbol.Name}: {ex.Message}");
+                return symbol.VolumeInUnitsMin;
             }
         }
 
@@ -181,88 +359,6 @@ namespace cAlgo.Robots.Trading
                     return fixedRiskBalance;
                 default:
                     return _robot.Account.Equity;
-            }
-        }
-
-        public (double? stopLoss, double? takeProfit) CalculateStopLossAndTakeProfit(
-            TradeType tradeType,
-            StopLossMode stopLossMode,
-            TakeProfitMode takeProfitMode,
-            int defaultStopLoss,
-            int defaultTakeProfit)
-        {
-            /***
-                Calculates stop loss and take profit price levels for a trade.
-                
-                Args:
-                    tradeType: Direction of the trade (Buy or Sell)
-                    stopLossMode: Stop loss calculation method (Fixed, None, UseATR, UseADR)
-                    takeProfitMode: Take profit calculation method (Fixed, None, UseATR, UseADR)
-                    defaultStopLoss: Stop loss distance in pips for fixed mode
-                    defaultTakeProfit: Take profit distance in pips for fixed mode
-                
-                Returns:
-                    Tuple containing:
-                    - stopLoss: Stop loss price level (null if mode is None)
-                    - takeProfit: Take profit price level (null if mode is None)
-                    
-                    Returns (null, null) if calculation errors occur.
-                
-                Notes:
-                    - Prices are calculated from current Ask (Buy) or Bid (Sell) prices
-                    - Stop loss is placed opposite to trade direction
-                    - Take profit is placed in trade direction
-                    - All prices are normalized to symbol digit precision
-                    - Currently only supports Fixed mode, ATR/ADR modes reserved for future enhancement
-            ***/
-            
-            try
-            {
-                double? stopLoss = null;
-                double? takeProfit = null;
-
-                var currentPrice = tradeType == TradeType.Buy ? _robot.Symbol.Ask : _robot.Symbol.Bid;
-
-                // Calculate Stop Loss
-                if (stopLossMode != StopLossMode.None)
-                {
-                    var stopLossPips = defaultStopLoss;
-                    
-                    if (tradeType == TradeType.Buy)
-                    {
-                        stopLoss = currentPrice - (stopLossPips * _robot.Symbol.PipSize);
-                    }
-                    else
-                    {
-                        stopLoss = currentPrice + (stopLossPips * _robot.Symbol.PipSize);
-                    }
-                    
-                    stopLoss = Math.Round(stopLoss.Value, _robot.Symbol.Digits);
-                }
-
-                // Calculate Take Profit
-                if (takeProfitMode != TakeProfitMode.None)
-                {
-                    var takeProfitPips = defaultTakeProfit;
-                    
-                    if (tradeType == TradeType.Buy)
-                    {
-                        takeProfit = currentPrice + (takeProfitPips * _robot.Symbol.PipSize);
-                    }
-                    else
-                    {
-                        takeProfit = currentPrice - (takeProfitPips * _robot.Symbol.PipSize);
-                    }
-                    
-                    takeProfit = Math.Round(takeProfit.Value, _robot.Symbol.Digits);
-                }
-
-                return (stopLoss, takeProfit);
-            }
-            catch (Exception ex)
-            {
-                _logger?.Error("Error calculating stop loss and take profit", ex);
-                return (null, null);
             }
         }
 
@@ -360,7 +456,7 @@ namespace cAlgo.Robots.Trading
                     return false;
                 }
 
-                _logger?.Debug("All trade validations passed successfully");
+                _logger?.Debug("Exiting ValidateTrade() : Returning TRUE : All trade validations passed successfully");
                 return true;
             }
             catch (Exception ex)
@@ -539,12 +635,33 @@ namespace cAlgo.Robots.Trading
                     true if trading is allowed at current time, false otherwise.
                 
                 Notes:
-                    - Reuses existing IsWithinTradingHours method
+                    - Handles overnight trading sessions (e.g., 22:00 to 06:00)
+                    - Uses server time for validation
+                    - Hour comparison is inclusive of start and end hours
                     - Returns true if trading hours are disabled
                     - Logs specific time restriction failures
             ***/
             
-            if (!IsWithinTradingHours(useTradingHours, tradingHourStart, tradingHourEnd))
+            if (!useTradingHours)
+                return true;
+
+            var currentHour = _robot.Server.Time.Hour;
+            var startHour = (int)tradingHourStart;
+            var endHour = (int)tradingHourEnd;
+            var isWithinTradingHours = false;
+
+            if (startHour <= endHour)
+            {
+                isWithinTradingHours = currentHour >= startHour && currentHour <= endHour;
+            }
+            else
+            {
+                // Handle overnight trading hours (e.g., 22:00 to 06:00)
+                isWithinTradingHours = currentHour >= startHour || currentHour <= endHour;
+            }
+        
+            
+            if (!isWithinTradingHours)
             {
                 _logger?.Warning($"Trading hours validation failed: Current time {_robot.Server.Time:HH:mm} outside allowed hours {tradingHourStart}-{tradingHourEnd}");
                 return false;
