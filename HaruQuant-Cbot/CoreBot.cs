@@ -3,13 +3,250 @@ using cAlgo.API;
 using cAlgo.API.Collections;
 using cAlgo.API.Indicators;
 using cAlgo.API.Internals;
+using cAlgo.Robots.Utils;
 
 namespace cAlgo.Robots
 {
     [Robot(AccessRights = AccessRights.None, AddIndicators = true)]
     public class CoreBot : Robot
     {
+        #region Parameters of CBot
 
+        #region Identity
+        [Parameter(BotConfig.BotName + " " + BotConfig.BotVersion, Group = "IDENTITY", DefaultValue = "https://haruperi.ltd/trading/")]
+        public string ProductInfo { get; set; }
+
+        [Parameter("Preset information", Group = "IDENTITY", DefaultValue = "XAUUSD Range5 | 01.01.2024 to 29.04.2024 | $1000")]
+        public string PresetInfo { get; set; }
+        #endregion
+
+        #region System Settings
+        [Parameter("Enable Console Logging", Group = "SYSTEM SETTINGS", DefaultValue = true)]
+        public bool EnableConsoleLogging { get; set; }
+
+        [Parameter("Enable File Logging", Group = "SYSTEM SETTINGS", DefaultValue = true)]
+        public bool EnableFileLogging { get; set; }
+
+        [Parameter("Log File Name", Group = "SYSTEM SETTINGS", DefaultValue = "cbot_log.txt")]
+        public string LogFileName { get; set; }
+        #endregion
+
+        // ------------------------------------Strategy Settings------------------------------------
+
+        #region Strategy
+        [Parameter("Trading Mode", Group = "STRATEGY", DefaultValue = TradingMode.Both)]
+        public TradingMode MyTradingMode { get; set; }
+
+        // ActiveStrategy now uses the locally defined Strategy enum
+        [Parameter("Strategy", Group = "STRATEGY", DefaultValue = Strategy.TrendFollowing)]
+        public Strategy ActiveStrategy { get; set; }
+
+        [Parameter("Symbols To Trade", Group = "STRATEGY", DefaultValue = SymbolsToTrade.Custom)]
+        public SymbolsToTrade SymbolsToTrade { get; set; }
+
+        [Parameter("Custom Symbols (comma-separated)", Group = "STRATEGY", DefaultValue = "")]
+        public string CustomSymbols { get; set; }
+
+        [Parameter("MA Type", Group = "STRATEGY", DefaultValue = MovingAverageType.Exponential)]
+        public MovingAverageType MAType { get; set; }
+
+        [Parameter("Source", Group = "STRATEGY")]
+        public DataSeries SourceSeries { get; set; }
+
+        [Parameter("Fast Period", Group = "STRATEGY", DefaultValue = 12, Step = 1)]
+        public int FastPeriod { get; set; }
+
+        [Parameter("Slow Period", Group = "STRATEGY", DefaultValue = 48, Step = 1)]
+        public int SlowPeriod { get; set; }
+
+        [Parameter("Bias Period", Group = "STRATEGY", DefaultValue = 288, Step = 1)]
+        public int BiasPeriod { get; set; }
+
+        [Parameter("RSI Period", Group = "STRATEGY", DefaultValue = 12, Step = 1)]
+        public int RSIPeriod { get; set; }
+
+        [Parameter("RSI Overbought Level", Group = "STRATEGY", DefaultValue = 70, Step = 1)]
+        public int RSIOverboughtLevel { get; set; }
+
+        [Parameter("RSI Oversold Level", Group = "STRATEGY", DefaultValue = 30, Step = 1)]
+        public int RSIOversoldLevel { get; set; }
+
+        [Parameter("Trading Timeframe", Group = "STRATEGY", DefaultValue = "Minute5")]
+        public TimeFrame TradingTimeframe { get; set; }
+
+        [Parameter("Higher Timeframe", Group = "STRATEGY", DefaultValue = "Hour")]
+        public TimeFrame HigherTimeframe { get; set; }
+
+        [Parameter("HT Min Distance (Pips)", Group = "STRATEGY", DefaultValue = 5)]
+        public int HTMinDistancePips { get; set; }
+
+        [Parameter("LT Min Distance (Pips)", Group = "STRATEGY", DefaultValue = 2)]
+        public int LTMinDistancePips { get; set; }
+        #endregion
+
+        // ------------------------------------Risk Management------------------------------------
+
+        #region Risk Management
+
+        [Parameter("Risk Base", Group = "RISK MANAGEMENT", DefaultValue = RiskBase.Equity)]
+        public RiskBase RiskBase { get; set; }
+
+        [Parameter("Risk Size", Group = "RISK MANAGEMENT", DefaultValue = RiskDefaultSize.Auto)]
+        public RiskDefaultSize RiskSizeMode { get; set; }
+
+        [Parameter("Stop Loss Mode", Group = "RISK MANAGEMENT", DefaultValue = StopLossMode.Fixed)]
+        public StopLossMode StopLossMode { get; set; }
+
+        [Parameter("Take Profit Mode", Group = "RISK MANAGEMENT", DefaultValue = TakeProfitMode.Fixed)]
+        public TakeProfitMode TakeProfitMode { get; set; }
+
+        [Parameter("Risk Per Trade", Group = "RISK MANAGEMENT", DefaultValue = 1, MinValue = 0.01, Step = 0.01, MaxValue = 100)]
+        public double RiskPerTrade { get; set; }
+
+        [Parameter("Fixed Risk Balance", Group = "RISK MANAGEMENT", DefaultValue = 1000, MinValue = 20)]
+        public double FixedRiskBalance { get; set; }
+
+        [Parameter("Fixed Risk Amount", Group = "RISK MANAGEMENT", DefaultValue = 1000, MinValue = 20)]
+        public double FixedRiskAmount { get; set; }
+
+        [Parameter("Balance Increase", Group = "RISK MANAGEMENT", DefaultValue = 100, MinValue = 20)]
+        public double BalanceIncrease { get; set; }
+
+        [Parameter("Lot Increase", Group = "RISK MANAGEMENT", DefaultValue = 0.01, MinValue = 0.01, Step = 0.01, MaxValue = 100)]
+        public double LotIncrease { get; set; }
+
+        [Parameter("Lot Decrease Ratio", Group = "RISK MANAGEMENT", DefaultValue = 0.3, MinValue = 0.01, Step = 0.01, MaxValue = 1)]
+        public double LotDecreaseRatio { get; set; }
+
+        [Parameter("Default Position Size", Group = "RISK MANAGEMENT", DefaultValue = 0.01, MinValue = 0.01, Step = 0.01, MaxValue = 100)]
+        public double DefaultPositionSize { get; set; }
+
+        [Parameter("Default Stop Loss", Group = "RISK MANAGEMENT", DefaultValue = 20)]
+        public int DefaultStopLoss { get; set; }
+
+        [Parameter("Default Take Profit", Group = "RISK MANAGEMENT", DefaultValue = 40)]
+        public int DefaultTakeProfit { get; set; }
+
+        [Parameter("ATR Period", Group = "RISK MANAGEMENT", DefaultValue = 12)]
+        public int ATRPeriod { get; set; }
+
+        [Parameter("ADR Period", Group = "RISK MANAGEMENT", DefaultValue = 10)]
+        public int ADRPeriod { get; set; }
+
+        [Parameter("Stop Loss Multiplier", Group = "RISK MANAGEMENT", DefaultValue = 1.0)]
+        public double StopLossMultiplier { get; set; }
+
+        [Parameter("Take Profit Multiplier", Group = "RISK MANAGEMENT", DefaultValue = 2.0)]
+        public double TakeProfitMultiplier { get; set; }
+
+        [Parameter("Manage Trade", Group = "RISK MANAGEMENT", DefaultValue = ManageTrade.Decomposition)]
+        public ManageTrade ManageTrade { get; set; }
+
+        [Parameter("Trade Distance Multiplier", Group = "RISK MANAGEMENT", DefaultValue = 1.0, MinValue = 1, Step = 0.5, MaxValue = 5)]
+        public double TradeDistanceMultiplier { get; set; }
+
+        [Parameter("Use Trailing Stop", Group = "RISK MANAGEMENT", DefaultValue = false)]
+        public bool UseTrailingStop { get; set; }
+
+        [Parameter("Trail Distance", Group = "RISK MANAGEMENT", DefaultValue = 10)]
+        public int TrailDistance { get; set; }
+
+        [Parameter("Trail From", Group = "RISK MANAGEMENT", DefaultValue = 10)]
+        public int TrailFrom { get; set; }
+
+        [Parameter("ADR Ratio", Group = "RISK MANAGEMENT", DefaultValue = 3.0)]
+        public double ADRRatio { get; set; }
+
+        [Parameter("Hide Stop Loss", Group = "RISK MANAGEMENT", DefaultValue = false)]
+        public bool HideStopLoss { get; set; }
+
+        [Parameter("Hide Take Profit", Group = "RISK MANAGEMENT", DefaultValue = false)]
+        public bool HideTakeProfit { get; set; }
+
+        [Parameter("Max Number of Buy Trades", Group = "RISK MANAGEMENT", DefaultValue = 1, MinValue = 0, Step = 1, MaxValue = 100)]
+        public int MaxBuyTrades { get; set; }
+
+        [Parameter("Max Number of Sell Trades", Group = "RISK MANAGEMENT", DefaultValue = 1, MinValue = 0, Step = 1, MaxValue = 100)]
+        public int MaxSellTrades { get; set; }
+
+        #endregion
+
+        // ------------------------------------Trading Settings------------------------------------
+
+        #region Trading Settings
+        [Parameter("Use Trading Hours", Group = "TRADING SETTINGS", DefaultValue = true)]
+        public bool UseTradingHours { get; set; }
+
+        [Parameter("Trading Start Hour", Group = "TRADING SETTINGS", DefaultValue = HourOfDay.H02)]
+        public HourOfDay TradingHourStart { get; set; }
+
+        [Parameter("Trading End Hour", Group = "TRADING SETTINGS", DefaultValue = HourOfDay.H23)]
+        public HourOfDay TradingHourEnd { get; set; }
+        
+        [Parameter("Trading Direction", Group = "TRADING SETTINGS", DefaultValue = TradingDirection.Both)]
+        public TradingDirection TradingDirection { get; set; }
+
+        [Parameter("Order Label", Group = "TRADING SETTINGS", DefaultValue = "HaruQuant Cbot")]
+        public string OrderLabel { get; set; }
+
+        [Parameter("Slippage (Pips)", Group = "TRADING SETTINGS", DefaultValue = 1, MinValue = 0)]
+        public double SlippageInPips { get; set; }
+
+        [Parameter("Max Spread (Pips)", Group = "TRADING SETTINGS", DefaultValue = 3, MinValue = 0)]
+        public double MaxSpreadInPips { get; set; }
+        #endregion
+
+        // ------------------------------------Notification Settings------------------------------------
+        #region Notification Settings
+
+        [Parameter("Popup Notification", Group = "NOTIFICATION SETTINGS", DefaultValue = false)]
+        public bool PopupNotification { get; set; }
+
+        [Parameter("Sound Notification", Group = "NOTIFICATION SETTINGS", DefaultValue = false)]
+        public bool SoundNotification { get; set; }
+
+        [Parameter("Email Notification", Group = "NOTIFICATION SETTINGS", DefaultValue = false)]
+        public bool EmailNotification { get; set; }
+
+        [Parameter("Email address", Group = "NOTIFICATION SETTINGS", DefaultValue = "notify@testmail.com")]
+        public string EmailAddress { get; set; }
+
+        [Parameter("Telegram Notification", Group = "NOTIFICATION SETTINGS", DefaultValue = false)]
+        public bool TelegramEnabled { get; set; }
+
+        [Parameter("API Token", Group = "NOTIFICATION SETTINGS", DefaultValue = "")]
+        public string TelegramToken { get; set; }
+
+        [Parameter("Chat IDs (separate by comma)", Group = "NOTIFICATION SETTINGS", DefaultValue = "")]
+        public string TelegramChatIDs { get; set; }
+        #endregion
+
+        // ------------------------------------Display Settings------------------------------------
+
+        #region Display Settings
+        [Parameter("Show Objects", Group = "DISPLAY SETTINGS", DefaultValue = true)]
+        public bool ShowObjects { get; set; }
+
+        [Parameter("FontSize", Group = "DISPLAY SETTINGS", DefaultValue = 12)]
+        public int FontSize { get; set; }
+
+        [Parameter("Space to Corner", Group = "DISPLAY SETTINGS", DefaultValue = 10)]
+        public int MarginSpace { get; set; }
+
+        [Parameter("Horizontal Alignment", Group = "DISPLAY SETTINGS", DefaultValue = HorizontalAlignment.Left)]
+        public HorizontalAlignment PanelHorizontalAlignment { get; set; }
+
+        [Parameter("Vertical Alignment", Group = "DISPLAY SETTINGS", DefaultValue = VerticalAlignment.Top)]
+        public VerticalAlignment PanelVerticalAlignment { get; set; }
+
+        [Parameter("Text Color", Group = "DISPLAY SETTINGS", DefaultValue = "Snow")]
+        public string ColorText { get; set; }
+
+        [Parameter("Show How To Use", Group = "DISPLAY SETTINGS", DefaultValue = true)]
+        public bool ShowHowToUse { get; set; }
+        #endregion
+
+        #endregion
 
         protected override void OnStart()
         {
