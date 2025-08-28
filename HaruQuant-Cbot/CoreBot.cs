@@ -252,6 +252,11 @@ namespace cAlgo.Robots
         private Logger _logger;
         private ErrorHandler _errorHandler;
         private CrashRecovery _crashRecovery;
+        
+        // Moving Average indicators for trend following strategy
+        private MovingAverage _fastMA;
+        private MovingAverage _slowMA;
+        private MovingAverage _biasMA;
 
         protected override void OnStart()
         {
@@ -261,6 +266,9 @@ namespace cAlgo.Robots
                 InitializeLogger();
                 InitializeErrorHandler();
                 InitializeCrashRecovery();
+                
+                // Initialize trading indicators
+                InitializeIndicators();
                 
                 _logger.Info("=== CoreBot Starting ===");
                 _logger.Info($"Bot: {BotConfig.BotName} v{BotConfig.BotVersion}");
@@ -344,6 +352,305 @@ namespace cAlgo.Robots
             _logger.Info("CrashRecovery service initialized successfully");
         }
 
+        /// <summary>
+        /// Initializes the trading indicators
+        /// </summary>
+        private void InitializeIndicators()
+        {
+            try
+            {
+                // Use SourceSeries if specified, otherwise default to Close prices
+                var source = SourceSeries ?? Bars.ClosePrices;
+                
+                // Initialize Moving Averages
+                _fastMA = Indicators.MovingAverage(source, FastPeriod, MAType);
+                _slowMA = Indicators.MovingAverage(source, SlowPeriod, MAType);
+                _biasMA = Indicators.MovingAverage(source, BiasPeriod, MAType);
+                
+                _logger.Info($"Indicators initialized successfully:");
+                _logger.Info($"  Fast MA: {FastPeriod} period {MAType}");
+                _logger.Info($"  Slow MA: {SlowPeriod} period {MAType}");
+                _logger.Info($"  Bias MA: {BiasPeriod} period {MAType}");
+                _logger.Info($"  Source: {(SourceSeries != null ? "Custom" : "Close prices")}");
+            }
+            catch (Exception ex)
+            {
+                _logger.Error("Failed to initialize indicators", ex);
+                _errorHandler?.HandleException(ex, "Indicator initialization failure", attemptRecovery: false);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Executes the simple trend following strategy
+        /// </summary>
+        private void ExecuteTrendFollowingStrategy()
+        {
+            try
+            {
+                // Ensure we have enough bars for calculation
+                if (Bars.Count < Math.Max(Math.Max(FastPeriod, SlowPeriod), BiasPeriod) + 1)
+                {
+                    _logger?.Debug($"Not enough bars for strategy calculation. Current: {Bars.Count}, Required: {Math.Max(Math.Max(FastPeriod, SlowPeriod), BiasPeriod) + 1}");
+                    return;
+                }
+
+                // Get current and previous MA values
+                var currentFastMA = _fastMA.Result.LastValue;
+                var currentSlowMA = _slowMA.Result.LastValue;
+                var currentBiasMA = _biasMA.Result.LastValue;
+                
+                var previousFastMA = _fastMA.Result.Last(1);
+                var previousSlowMA = _slowMA.Result.Last(1);
+
+                _logger?.Debug($"MA Values - Fast: {currentFastMA:F5}/{previousFastMA:F5}, Slow: {currentSlowMA:F5}/{previousSlowMA:F5}, Bias: {currentBiasMA:F5}");
+
+                // Check trading hours if enabled
+                if (UseTradingHours && !IsWithinTradingHours())
+                {
+                    _logger?.Debug("Outside trading hours - no new trades");
+                    return;
+                }
+
+                // Check if we already have positions
+                var buyPositions = Positions.FindAll(OrderLabel, Symbol.Name, TradeType.Buy);
+                var sellPositions = Positions.FindAll(OrderLabel, Symbol.Name, TradeType.Sell);
+
+                // Buy signal: previousFastMa < previousSlowMa && currentFastMa > currentSlowMa && currentSlowMa > currentBiasMa
+                bool buySignal = previousFastMA < previousSlowMA && 
+                                currentFastMA > currentSlowMA && 
+                                currentSlowMA > currentBiasMA;
+
+                // Sell signal: previousFastMa > previousSlowMa && currentFastMa < currentSlowMa && currentSlowMa < currentBiasMa
+                bool sellSignal = previousFastMA > previousSlowMA && 
+                                 currentFastMA < currentSlowMA && 
+                                 currentSlowMA < currentBiasMA;
+
+                _logger?.Debug($"Signals - Buy: {buySignal}, Sell: {sellSignal}");
+
+                // Execute buy signal
+                if (buySignal && (TradingDirection == TradingDirection.Both || TradingDirection == TradingDirection.Buy))
+                {
+                    if (buyPositions.Length < MaxBuyTrades)
+                    {
+                        ExecuteMarketOrder(TradeType.Buy);
+                    }
+                    else
+                    {
+                        _logger?.Debug($"Maximum buy trades reached: {buyPositions.Length}/{MaxBuyTrades}");
+                    }
+                }
+
+                // Execute sell signal
+                if (sellSignal && (TradingDirection == TradingDirection.Both || TradingDirection == TradingDirection.Sell))
+                {
+                    if (sellPositions.Length < MaxSellTrades)
+                    {
+                        ExecuteMarketOrder(TradeType.Sell);
+                    }
+                    else
+                    {
+                        _logger?.Debug($"Maximum sell trades reached: {sellPositions.Length}/{MaxSellTrades}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.Error("Error in trend following strategy execution", ex);
+                _errorHandler?.HandleException(ex, "Strategy execution failure", attemptRecovery: true);
+            }
+        }
+
+        /// <summary>
+        /// Checks if current time is within trading hours
+        /// </summary>
+        private bool IsWithinTradingHours()
+        {
+            var currentHour = Server.Time.Hour;
+            var startHour = (int)TradingHourStart;
+            var endHour = (int)TradingHourEnd;
+
+            if (startHour <= endHour)
+            {
+                return currentHour >= startHour && currentHour <= endHour;
+            }
+            else
+            {
+                // Handle overnight trading hours (e.g., 22:00 to 06:00)
+                return currentHour >= startHour || currentHour <= endHour;
+            }
+        }
+
+        /// <summary>
+        /// Executes a market order with proper risk management
+        /// </summary>
+        private void ExecuteMarketOrder(TradeType tradeType)
+        {
+            try
+            {
+                // Calculate position size
+                var volumeInUnits = CalculatePositionSize();
+                
+                // Calculate stop loss and take profit
+                var (stopLoss, takeProfit) = CalculateStopLossAndTakeProfit(tradeType);
+
+                _logger?.Info($"Executing {tradeType} order:");
+                _logger?.Info($"  Volume: {volumeInUnits} units");
+                _logger?.Info($"  Stop Loss: {stopLoss:F5}");
+                _logger?.Info($"  Take Profit: {takeProfit:F5}");
+
+                // Execute the trade
+                var result = ExecuteMarketOrder(tradeType, Symbol.Name, volumeInUnits, OrderLabel, stopLoss, takeProfit);
+
+                if (result.IsSuccessful)
+                {
+                    _logger?.Info($"Order executed successfully. Position ID: {result.Position.Id}");
+                }
+                else
+                {
+                    _logger?.Error($"Order execution failed: {result.Error}");
+                    _errorHandler?.HandleError(ErrorCategory.Trading, ErrorSeverity.Medium, 
+                        $"Order execution failed: {result.Error}", context: $"TradeType: {tradeType}", attemptRecovery: false);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.Error($"Error executing {tradeType} order", ex);
+                _errorHandler?.HandleException(ex, "Order execution failure", attemptRecovery: true);
+            }
+        }
+
+        /// <summary>
+        /// Calculates position size based on risk management settings
+        /// </summary>
+        private long CalculatePositionSize()
+        {
+            try
+            {
+                double volumeInUnits;
+
+                switch (RiskSizeMode)
+                {
+                    case RiskDefaultSize.FixedLots:
+                        volumeInUnits = Symbol.QuantityToVolumeInUnits(DefaultPositionSize);
+                        break;
+
+                    case RiskDefaultSize.Auto:
+                        // Calculate volume based on risk percentage
+                        var accountValue = GetAccountValue();
+                        var riskAmount = accountValue * (RiskPerTrade / 100.0);
+                        var stopLossInPips = DefaultStopLoss;
+                        var stopLossValue = stopLossInPips * Symbol.PipValue * Symbol.LotSize;
+                        
+                        if (stopLossValue > 0)
+                        {
+                            var lots = riskAmount / stopLossValue;
+                            volumeInUnits = Symbol.QuantityToVolumeInUnits(lots);
+                        }
+                        else
+                        {
+                            volumeInUnits = Symbol.QuantityToVolumeInUnits(DefaultPositionSize);
+                        }
+                        break;
+
+                    case RiskDefaultSize.FixedAmount:
+                        volumeInUnits = Symbol.QuantityToVolumeInUnits(FixedRiskAmount / 100000.0); // Assuming standard lot conversion
+                        break;
+
+                    default:
+                        volumeInUnits = Symbol.QuantityToVolumeInUnits(DefaultPositionSize);
+                        break;
+                }
+
+                // Normalize volume
+                volumeInUnits = Symbol.NormalizeVolumeInUnits(volumeInUnits, RoundingMode.Down);
+
+                _logger?.Debug($"Calculated position size: {volumeInUnits} units ({Symbol.VolumeInUnitsToQuantity(volumeInUnits)} lots)");
+
+                return (long)Math.Round(volumeInUnits);
+            }
+            catch (Exception ex)
+            {
+                _logger?.Error("Error calculating position size", ex);
+                return (long)Math.Round(Symbol.QuantityToVolumeInUnits(DefaultPositionSize));
+            }
+        }
+
+        /// <summary>
+        /// Gets account value based on risk base setting
+        /// </summary>
+        private double GetAccountValue()
+        {
+            switch (RiskBase)
+            {
+                case RiskBase.Equity:
+                    return Account.Equity;
+                case RiskBase.Balance:
+                    return Account.Balance;
+                case RiskBase.FreeMargin:
+                    return Account.FreeMargin;
+                case RiskBase.FixedBalance:
+                    return FixedRiskBalance;
+                default:
+                    return Account.Equity;
+            }
+        }
+
+        /// <summary>
+        /// Calculates stop loss and take profit levels
+        /// </summary>
+        private (double? stopLoss, double? takeProfit) CalculateStopLossAndTakeProfit(TradeType tradeType)
+        {
+            try
+            {
+                double? stopLoss = null;
+                double? takeProfit = null;
+
+                var currentPrice = tradeType == TradeType.Buy ? Symbol.Ask : Symbol.Bid;
+
+                // Calculate Stop Loss
+                if (StopLossMode != StopLossMode.None)
+                {
+                    var stopLossPips = DefaultStopLoss;
+                    
+                    if (tradeType == TradeType.Buy)
+                    {
+                        stopLoss = currentPrice - (stopLossPips * Symbol.PipSize);
+                    }
+                    else
+                    {
+                        stopLoss = currentPrice + (stopLossPips * Symbol.PipSize);
+                    }
+                    
+                    stopLoss = Math.Round(stopLoss.Value, Symbol.Digits);
+                }
+
+                // Calculate Take Profit
+                if (TakeProfitMode != TakeProfitMode.None)
+                {
+                    var takeProfitPips = DefaultTakeProfit;
+                    
+                    if (tradeType == TradeType.Buy)
+                    {
+                        takeProfit = currentPrice + (takeProfitPips * Symbol.PipSize);
+                    }
+                    else
+                    {
+                        takeProfit = currentPrice - (takeProfitPips * Symbol.PipSize);
+                    }
+                    
+                    takeProfit = Math.Round(takeProfit.Value, Symbol.Digits);
+                }
+
+                return (stopLoss, takeProfit);
+            }
+            catch (Exception ex)
+            {
+                _logger?.Error("Error calculating stop loss and take profit", ex);
+                return (null, null);
+            }
+        }
+
         protected override void OnTick()
         {
             try
@@ -384,10 +691,8 @@ namespace cAlgo.Robots
                     return;
                 }
                 
-                // OnBar strategy logic will be implemented here
-                // This is where main trading logic will execute
-                
-                // Future: Strategy execution logic will be added here
+                // Execute trend following strategy
+                ExecuteTrendFollowingStrategy();
             }
             catch (Exception ex)
             {
