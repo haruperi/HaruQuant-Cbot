@@ -60,25 +60,41 @@ Also update the progress of the task in the Scratchpad when you finish a subtask
 Especially when you finished a milestone, it will help to improve your depth of task accomplishment to use the Scratchpad to reflect and plan.
 The goal is to help you maintain a big picture as well as the progress of the task. Always refer to the Scratchpad when you plan the next step.
 
+## Git Commit Guidelines
+After every given task has been completed, you MUST git commit the changes using the following commit message conventions. All tasks and commit messages fall under these 6 categories:
+
+- feat: {commit message} - New features or functionality additions
+- fix: {commit message} - Bug fixes and error corrections
+- docs: {commit message} - Documentation updates, additions, or improvements
+- style: {commit message} - Code style changes, formatting, refactoring without functionality changes
+- perf: {commit message} - Performance improvements and optimizations
+- test: {commit message} - Test additions, modifications, or test-related changes
+
+Examples:
+- feat: add CoreBot entry point class with lifecycle management
+- fix: resolve threading issues in crash recovery system
+- docs: update strategy framework guide with implementation examples
+- style: rename HaruQuantCbot class to CoreBot for better naming convention
+- perf: optimize OnTick processing for reduced latency
+- test: add unit tests for RiskManager position sizing logic
+
 ## Lessons
 - (Placeholder for future lessons)
 
 ## Scratchpad
-Current Task: Implement Strategy Module - Creating Base Framework and NaiveTrend Strategy
+Current Task: Rename Entry Point Class - HaruQuant-Cbot.cs to CoreBot.cs
 
 Task Breakdown:
-[ ] Create StrategyBase.cs - Abstract base class for all strategies with CoreBot parameters
-[ ] Create NaiveTrend.cs - Triple moving average strategy implementation
-[ ] Integrate strategies with existing RiskManager and TradeManager
-[ ] Create documentation for strategy development
+[X] Update .cursorrules Scratchpad with new task
+[X] Rename HaruQuant-Cbot.cs file to CoreBot.cs
+[X] Update class name from HaruQuantCbot to CoreBot
+[X] Verify project compilation and references (no linting errors)
 
 Task Context:
-- NaiveTrend Strategy Logic:
-  - Fast MA, Slow MA, Bias MA triple moving average system
-  - Buy Condition: previousFastMa < previousSlowMa && currentFastMa > currentSlowMa && currentSlowMa > currentBiasMa
-  - Sell Condition: previousFastMa > previousSlowMa && currentFastMa < currentSlowMa && currentSlowMa < currentBiasMa
-- Use existing CoreBot parameters (FastPeriod, SlowPeriod, BiasPeriod, MAType, SourceSeries)
-- Leverage existing Trading module components (RiskManager, TradeManager)
+- Main entry point file needs to be renamed for better organization
+- Following architectural design where CoreBot.cs serves as the primary robot class
+- Need to ensure class name matches file name convention
+- This is part of the core module organization as outlined in the todo list
 
 Previous Completed Work:
 ✅ TRADING MODULE COMPLETED: Full trading infrastructure ready
@@ -88,8 +104,6 @@ Previous Completed Work:
 - [X] Complete documentation and validation systems
 
 ✅ STRATEGY MODULE COMPLETED: Full strategy framework implemented
-
-Completed Features:
 - [X] StrategyBase.cs - Abstract base class with comprehensive CoreBot integration
 - [X] NaiveTrend.cs - Triple MA strategy with proper crossover logic
 - [X] Full integration with RiskManager and TradeManager
@@ -97,37 +111,7 @@ Completed Features:
 - [X] Error handling and logging throughout strategy framework
 - [X] CoreBot integration with automatic strategy initialization
 
-Key Strategy Framework Features:
-1. StrategyBase - Abstract base class providing:
-   - CoreBot parameter integration
-   - RiskManager and TradeManager integration  
-   - Signal generation framework
-   - Event handling (OnTick, OnBar, OnStop)
-   - Error handling and logging
-   - Trade execution with risk management
-   
-2. NaiveTrend Strategy - Triple MA implementation:
-   - Fast MA, Slow MA, Bias MA system
-   - Crossover-based entry signals with bias filter
-   - Reverse crossover exit signals
-   - Parameter validation and indicator initialization
-   - Real-time signal logging and monitoring
-   
-3. CoreBot Integration:
-   - Automatic strategy selection based on ActiveStrategy parameter
-   - Strategy initialization in OnStart()
-   - Strategy processing in OnBar()
-   - Strategy cleanup in OnStop()
-   - Full error handling integration
-
-✅ Strategy Framework Documentation:
-- Complete Strategy_Framework_Guide.md
-- Strategy development best practices
-- Parameter integration guide
-- Signal generation patterns
-- Integration examples and templates
-
-Ready for: Additional strategy implementations or other modules
+Ready for: Entry point class refactoring and further module development
 
 # cTrader cBot Implementation Todo List
 

@@ -7,7 +7,7 @@ using cAlgo.API.Internals;
 namespace cAlgo.Robots
 {
     [Robot(AccessRights = AccessRights.None, AddIndicators = true)]
-    public class HaruQuantCbot : Robot
+    public class CoreBot : Robot
     {
 
 
