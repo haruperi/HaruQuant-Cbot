@@ -4,6 +4,7 @@ using cAlgo.API.Collections;
 using cAlgo.API.Indicators;
 using cAlgo.API.Internals;
 using cAlgo.Robots.Utils;
+using cAlgo.Robots.Trading;
 
 namespace cAlgo.Robots
 {
@@ -252,6 +253,7 @@ namespace cAlgo.Robots
         private Logger _logger;
         private ErrorHandler _errorHandler;
         private CrashRecovery _crashRecovery;
+        private RiskManager _riskManager;
         
         // Moving Average indicators for trend following strategy
         private MovingAverage _fastMA;
@@ -266,6 +268,7 @@ namespace cAlgo.Robots
                 InitializeLogger();
                 InitializeErrorHandler();
                 InitializeCrashRecovery();
+                InitializeRiskManager();
                 
                 // Initialize trading indicators
                 InitializeIndicators();
@@ -353,6 +356,15 @@ namespace cAlgo.Robots
         }
 
         /// <summary>
+        /// Initializes the RiskManager service
+        /// </summary>
+        private void InitializeRiskManager()
+        {
+            _riskManager = new RiskManager(this, _logger);
+            _logger.Info("RiskManager service initialized successfully");
+        }
+
+        /// <summary>
         /// Initializes the trading indicators
         /// </summary>
         private void InitializeIndicators()
@@ -406,7 +418,7 @@ namespace cAlgo.Robots
                 _logger?.Debug($"MA Values - Fast: {currentFastMA:F5}/{previousFastMA:F5}, Slow: {currentSlowMA:F5}/{previousSlowMA:F5}, Bias: {currentBiasMA:F5}");
 
                 // Check trading hours if enabled
-                if (UseTradingHours && !IsWithinTradingHours())
+                if (UseTradingHours && !_riskManager.IsWithinTradingHours(UseTradingHours, TradingHourStart, TradingHourEnd))
                 {
                     _logger?.Debug("Outside trading hours - no new trades");
                     return;
@@ -461,25 +473,7 @@ namespace cAlgo.Robots
             }
         }
 
-        /// <summary>
-        /// Checks if current time is within trading hours
-        /// </summary>
-        private bool IsWithinTradingHours()
-        {
-            var currentHour = Server.Time.Hour;
-            var startHour = (int)TradingHourStart;
-            var endHour = (int)TradingHourEnd;
 
-            if (startHour <= endHour)
-            {
-                return currentHour >= startHour && currentHour <= endHour;
-            }
-            else
-            {
-                // Handle overnight trading hours (e.g., 22:00 to 06:00)
-                return currentHour >= startHour || currentHour <= endHour;
-            }
-        }
 
         /// <summary>
         /// Executes a market order with proper risk management
@@ -489,10 +483,12 @@ namespace cAlgo.Robots
             try
             {
                 // Calculate position size
-                var volumeInUnits = CalculatePositionSize();
+                var volumeInUnits = _riskManager.CalculatePositionSize(
+                    RiskSizeMode, DefaultPositionSize, RiskPerTrade, DefaultStopLoss, FixedRiskAmount, RiskBase, FixedRiskBalance);
                 
                 // Calculate stop loss and take profit
-                var (stopLoss, takeProfit) = CalculateStopLossAndTakeProfit(tradeType);
+                var (stopLoss, takeProfit) = _riskManager.CalculateStopLossAndTakeProfit(
+                    tradeType, StopLossMode, TakeProfitMode, DefaultStopLoss, DefaultTakeProfit);
 
                 _logger?.Info($"Executing {tradeType} order:");
                 _logger?.Info($"  Volume: {volumeInUnits} units");
@@ -520,136 +516,7 @@ namespace cAlgo.Robots
             }
         }
 
-        /// <summary>
-        /// Calculates position size based on risk management settings
-        /// </summary>
-        private long CalculatePositionSize()
-        {
-            try
-            {
-                double volumeInUnits;
 
-                switch (RiskSizeMode)
-                {
-                    case RiskDefaultSize.FixedLots:
-                        volumeInUnits = Symbol.QuantityToVolumeInUnits(DefaultPositionSize);
-                        break;
-
-                    case RiskDefaultSize.Auto:
-                        // Calculate volume based on risk percentage
-                        var accountValue = GetAccountValue();
-                        var riskAmount = accountValue * (RiskPerTrade / 100.0);
-                        var stopLossInPips = DefaultStopLoss;
-                        var stopLossValue = stopLossInPips * Symbol.PipValue * Symbol.LotSize;
-                        
-                        if (stopLossValue > 0)
-                        {
-                            var lots = riskAmount / stopLossValue;
-                            volumeInUnits = Symbol.QuantityToVolumeInUnits(lots);
-                        }
-                        else
-                        {
-                            volumeInUnits = Symbol.QuantityToVolumeInUnits(DefaultPositionSize);
-                        }
-                        break;
-
-                    case RiskDefaultSize.FixedAmount:
-                        volumeInUnits = Symbol.QuantityToVolumeInUnits(FixedRiskAmount / 100000.0); // Assuming standard lot conversion
-                        break;
-
-                    default:
-                        volumeInUnits = Symbol.QuantityToVolumeInUnits(DefaultPositionSize);
-                        break;
-                }
-
-                // Normalize volume
-                volumeInUnits = Symbol.NormalizeVolumeInUnits(volumeInUnits, RoundingMode.Down);
-
-                _logger?.Debug($"Calculated position size: {volumeInUnits} units ({Symbol.VolumeInUnitsToQuantity(volumeInUnits)} lots)");
-
-                return (long)Math.Round(volumeInUnits);
-            }
-            catch (Exception ex)
-            {
-                _logger?.Error("Error calculating position size", ex);
-                return (long)Math.Round(Symbol.QuantityToVolumeInUnits(DefaultPositionSize));
-            }
-        }
-
-        /// <summary>
-        /// Gets account value based on risk base setting
-        /// </summary>
-        private double GetAccountValue()
-        {
-            switch (RiskBase)
-            {
-                case RiskBase.Equity:
-                    return Account.Equity;
-                case RiskBase.Balance:
-                    return Account.Balance;
-                case RiskBase.FreeMargin:
-                    return Account.FreeMargin;
-                case RiskBase.FixedBalance:
-                    return FixedRiskBalance;
-                default:
-                    return Account.Equity;
-            }
-        }
-
-        /// <summary>
-        /// Calculates stop loss and take profit levels
-        /// </summary>
-        private (double? stopLoss, double? takeProfit) CalculateStopLossAndTakeProfit(TradeType tradeType)
-        {
-            try
-            {
-                double? stopLoss = null;
-                double? takeProfit = null;
-
-                var currentPrice = tradeType == TradeType.Buy ? Symbol.Ask : Symbol.Bid;
-
-                // Calculate Stop Loss
-                if (StopLossMode != StopLossMode.None)
-                {
-                    var stopLossPips = DefaultStopLoss;
-                    
-                    if (tradeType == TradeType.Buy)
-                    {
-                        stopLoss = currentPrice - (stopLossPips * Symbol.PipSize);
-                    }
-                    else
-                    {
-                        stopLoss = currentPrice + (stopLossPips * Symbol.PipSize);
-                    }
-                    
-                    stopLoss = Math.Round(stopLoss.Value, Symbol.Digits);
-                }
-
-                // Calculate Take Profit
-                if (TakeProfitMode != TakeProfitMode.None)
-                {
-                    var takeProfitPips = DefaultTakeProfit;
-                    
-                    if (tradeType == TradeType.Buy)
-                    {
-                        takeProfit = currentPrice + (takeProfitPips * Symbol.PipSize);
-                    }
-                    else
-                    {
-                        takeProfit = currentPrice - (takeProfitPips * Symbol.PipSize);
-                    }
-                    
-                    takeProfit = Math.Round(takeProfit.Value, Symbol.Digits);
-                }
-
-                return (stopLoss, takeProfit);
-            }
-            catch (Exception ex)
-            {
-                _logger?.Error("Error calculating stop loss and take profit", ex);
-                return (null, null);
-            }
-        }
 
         protected override void OnTick()
         {

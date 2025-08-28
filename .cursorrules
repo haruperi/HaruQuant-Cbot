@@ -96,29 +96,41 @@ Examples:
 - (Placeholder for future lessons)
 
 ## Scratchpad
-Current Task: Simple trend following strategy implementation
+Current Task: Create RiskManager.cs in trading module
 
 Task Breakdown:
 [X] Update .cursorrules Scratchpad with new task
-[X] Add MovingAverage indicators (fast, slow, bias) initialization
-[X] Implement simple trend following strategy in OnBar function
-[X] Add buy signal logic: previousFastMa < previousSlowMa && currentFastMa > currentSlowMa && currentSlowMa > currentBiasMa
-[X] Add sell signal logic: previousFastMa > previousSlowMa && currentFastMa < currentSlowMa && currentSlowMa < currentBiasMa
-[X] Implement market order execution with proper risk management
-[X] Add position sizing calculation based on risk parameters
-[X] Add stop loss and take profit calculation
-[X] Integrate trading hours and max trades validation
-[X] Fix all linting errors and verify compilation
+[X] Create trading/ directory structure
+[X] Create RiskManager.cs file with core risk functions
+[X] Move IsWithinTradingHours() from CoreBot to RiskManager
+[X] Move CalculatePositionSize() from CoreBot to RiskManager
+[X] Move GetAccountValue() from CoreBot to RiskManager
+[X] Move CalculateStopLossAndTakeProfit() from CoreBot to RiskManager
+[X] Integrate RiskManager service in CoreBot initialization
+[X] Update function calls in CoreBot to use RiskManager
+[X] Remove old methods from CoreBot
+[X] Test compilation and verify everything works
 
 Task Context:
-- Implementing simple trend following strategy for initial testing
-- Using three moving averages (fast, slow, bias) for signal generation
-- Adding proper risk management with configurable position sizing
-- Including stop loss and take profit calculation based on parameters
-- Integrating with existing Logger and ErrorHandler services
-- Ensuring strategy works before proceeding with modular architecture
+- Creating modular architecture by extracting risk management functionality
+- Moving trading-related functions to dedicated RiskManager class
+- Maintaining existing functionality while improving code organization
+- Ensuring seamless integration with existing Logger and ErrorHandler services
+- Testing incrementally to verify functionality is preserved
 
 Previous Completed Work:
+✅ RISKMANAGER MODULE COMPLETED:
+- [X] Created trading/ directory for modular architecture
+- [X] Implemented RiskManager.cs with risk calculation functions
+- [X] Moved IsWithinTradingHours() method to RiskManager
+- [X] Moved CalculatePositionSize() method to RiskManager
+- [X] Moved GetAccountValue() method to RiskManager
+- [X] Moved CalculateStopLossAndTakeProfit() method to RiskManager
+- [X] Added RiskManager initialization in CoreBot
+- [X] Updated all function calls to use RiskManager service
+- [X] Removed duplicate methods from CoreBot
+- [X] Verified compilation and functionality preservation
+
 ✅ SIMPLE TREND FOLLOWING STRATEGY COMPLETED:
 - [X] Added MovingAverage indicators initialization (fast, slow, bias)
 - [X] Implemented trend following strategy in ExecuteTrendFollowingStrategy()
