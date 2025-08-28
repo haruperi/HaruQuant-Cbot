@@ -1,0 +1,348 @@
+You are an expert in C# and cTrader cBot development.
+
+Key Principles
+- Write clear, technical responses with precise C# examples relevant to cTrader.
+- Use cAlgo.API features and tools wherever possible to leverage its full capabilities for trading automation.
+- Prioritize readability and maintainability; follow C# coding conventions and cTrader best practices.
+- Use descriptive variable and function names; adhere to C# naming conventions (e.g., PascalCase for public members and methods, camelCase for local variables and private fields).
+- Structure your cBot in a modular way, potentially using separate classes or helper methods for different logical components (e.g., signal generation, order management, risk management).
+
+C# / cAlgo.API
+- Utilize the `Robot` class as the base for your cBot.
+- Use `Indicator` classes for custom technical indicators.
+- Leverage the `cAlgo.API.Internals` for accessing broker-specific information if necessary, but prefer the public API for broader compatibility.
+- Use `MarketSeries` for historical price data and `Symbol` for instrument-specific information.
+- Manage trading operations using `Trade` methods (e.g., `ExecuteMarketOrder`, `CreateLimitOrder`, `ClosePosition`).
+- Handle real-time market data through `OnTick()` or `OnBar()` event handlers.
+- Use `Timer` events for periodic tasks if needed, instead of relying on frequent `OnTick` processing for non-tick-sensitive logic.
+
+Error Handling and Debugging
+- Implement error handling using try-catch blocks where appropriate, especially for trade execution and API calls that might fail.
+- Use cTrader's `Print()` method for logging and debugging information to the cBot's log.
+- Utilize cTrader's backtesting and optimization tools to identify and resolve performance or logical issues.
+- Implement custom logging or status messages to improve the development and monitoring experience.
+- Use `ChartObjects` to draw debug information directly on the chart during backtesting or live trading if helpful.
+
+Dependencies
+- cAlgo.API
+- .NET Framework (version compatible with cTrader)
+- Potentially custom libraries or shared projects if developing a larger suite of tools.
+
+cTrader-Specific Guidelines
+- Clearly define and manage cBot parameters using the `[Parameter]` attribute.
+- Ensure proper state management within `OnStart()`, `OnTick()`, `OnBar()`, and `OnStop()` methods.
+- Handle position and order management carefully, considering partial fills, slippage, and connection issues.
+- Be mindful of broker limitations, such as maximum open orders or lot sizes.
+- Use `Symbol.NormalizeVolumeInUnits` and `Symbol.NormalizePrice` for accurate calculations.
+- Manage time zones and server time correctly using `Time` and `Symbol.TimeZone`.
+
+Performance Optimization (for cBots)
+- Optimize calculations within `OnTick()` and `OnBar()` as they are called frequently.
+- Avoid unnecessary object allocations in hot paths (e.g., `OnTick`).
+- If using complex calculations or many indicators, consider their performance impact.
+- Use efficient data structures for managing state or historical data if needed.
+- Be cautious with blocking operations or long-running tasks within event handlers.
+
+Key Conventions
+1. Follow the event-driven model of cTrader cBots.
+2. Prioritize robustness, accurate trade execution, and risk management.
+3. Maintain a clear and logical cBot structure for easy understanding and modification.
+
+Refer to cTrader Automate documentation (help.ctrader.com/ctrader-automate) and C# programming guides for best practices in scripting, algorithm design, and trading logic. 
+
+During your interaction with the user, if you find anything reusable in this project (e.g. version of a library, model name), especially about a fix to a mistake you made or a correction you received, you should take note in the `Lessons` section in the `.cursorrules` file so you will not make the same mistake again. 
+
+You should also use the `.cursorrules` file as a Scratchpad to organize your thoughts. Especially when you receive a new task, you should first review the content of the Scratchpad, clear old different task if necessary, first explain the task, and plan the steps you need to take to complete the task. You can use todo markers to indicate the progress, e.g.
+[X] Task 1
+[ ] Task 2
+
+Also update the progress of the task in the Scratchpad when you finish a subtask.
+Especially when you finished a milestone, it will help to improve your depth of task accomplishment to use the Scratchpad to reflect and plan.
+The goal is to help you maintain a big picture as well as the progress of the task. Always refer to the Scratchpad when you plan the next step.
+
+## Lessons
+- (Placeholder for future lessons)
+
+## Scratchpad
+Current Task: Implement Strategy Module - Creating Base Framework and NaiveTrend Strategy
+
+Task Breakdown:
+[ ] Create StrategyBase.cs - Abstract base class for all strategies with CoreBot parameters
+[ ] Create NaiveTrend.cs - Triple moving average strategy implementation
+[ ] Integrate strategies with existing RiskManager and TradeManager
+[ ] Create documentation for strategy development
+
+Task Context:
+- NaiveTrend Strategy Logic:
+  - Fast MA, Slow MA, Bias MA triple moving average system
+  - Buy Condition: previousFastMa < previousSlowMa && currentFastMa > currentSlowMa && currentSlowMa > currentBiasMa
+  - Sell Condition: previousFastMa > previousSlowMa && currentFastMa < currentSlowMa && currentSlowMa < currentBiasMa
+- Use existing CoreBot parameters (FastPeriod, SlowPeriod, BiasPeriod, MAType, SourceSeries)
+- Leverage existing Trading module components (RiskManager, TradeManager)
+
+Previous Completed Work:
+✅ TRADING MODULE COMPLETED: Full trading infrastructure ready
+- [X] RiskManager.cs - Position sizing, validation, risk management
+- [X] TradeManager.cs - Trade execution, trailing stops, position management
+- [X] Full integration with CoreBot parameters and error handling
+- [X] Complete documentation and validation systems
+
+✅ STRATEGY MODULE COMPLETED: Full strategy framework implemented
+
+Completed Features:
+- [X] StrategyBase.cs - Abstract base class with comprehensive CoreBot integration
+- [X] NaiveTrend.cs - Triple MA strategy with proper crossover logic
+- [X] Full integration with RiskManager and TradeManager
+- [X] Comprehensive documentation and usage guide
+- [X] Error handling and logging throughout strategy framework
+- [X] CoreBot integration with automatic strategy initialization
+
+Key Strategy Framework Features:
+1. StrategyBase - Abstract base class providing:
+   - CoreBot parameter integration
+   - RiskManager and TradeManager integration  
+   - Signal generation framework
+   - Event handling (OnTick, OnBar, OnStop)
+   - Error handling and logging
+   - Trade execution with risk management
+   
+2. NaiveTrend Strategy - Triple MA implementation:
+   - Fast MA, Slow MA, Bias MA system
+   - Crossover-based entry signals with bias filter
+   - Reverse crossover exit signals
+   - Parameter validation and indicator initialization
+   - Real-time signal logging and monitoring
+   
+3. CoreBot Integration:
+   - Automatic strategy selection based on ActiveStrategy parameter
+   - Strategy initialization in OnStart()
+   - Strategy processing in OnBar()
+   - Strategy cleanup in OnStop()
+   - Full error handling integration
+
+✅ Strategy Framework Documentation:
+- Complete Strategy_Framework_Guide.md
+- Strategy development best practices
+- Parameter integration guide
+- Signal generation patterns
+- Integration examples and templates
+
+Ready for: Additional strategy implementations or other modules
+
+# cTrader cBot Implementation Todo List
+
+## Initial Setup & Environment
+- [X] Install Visual Studio 2022 with .NET desktop development workload
+- [X] Install cTrader platform and create account
+- [X] Verify API access is enabled in cTrader
+- [X] Install cTrader Developer Tools
+- [X] Create new cBot project in cTrader
+- [X] Set up Git repository for version control
+- [X] Configure build settings for different environments (dev, test, prod)
+- [X] Create project structure according to architecture diagram
+
+## Core Bot Module
+- [X] Implement CoreBot.cs entry point class
+- [X] Create lifecycle management (OnStart, OnTick, OnBar, OnStop)
+- [X] Develop Constants.cs for system-wide configuration
+- [X] Implement crash recovery mechanisms
+- [ ] Create configuration management system
+- [X] Develop comprehensive error handling framework
+- [ ] Create core data models for market, trades and performance
+- [ ] Implement all required interfaces (IStrategy, IIndicator, etc.)
+- [X] Set up logging service for system-wide use
+- [ ] Create utility classes and extension methods
+
+## Market Module
+- [ ] Implement DataManager.cs for market data acquisition
+- [ ] Develop Symbols.cs for symbol management and filtering
+- [ ] Create OhlcProcessor.cs for candle/bar data handling
+- [ ] Implement TickProcessor.cs for tick-level data
+- [ ] Develop MarketWatch.cs for multi-instrument monitoring
+- [ ] Create PriceAnalysis.cs for price action analysis
+- [ ] Implement market volatility metrics calculation
+- [ ] Develop market condition identification system
+- [ ] Create significant price level detection
+- [ ] Implement correlation tracking between instruments
+
+## Trading Module
+- [ ] Develop OrderManager.cs for order creation and management
+- [ ] Implement PositionManager.cs for position tracking
+- [ ] Create TradeHistory.cs for historical trade analysis
+- [X] Implement RiskManager.cs for position sizing
+- [X] Develop ExecutionManager.cs for trade optimization
+- [] Create order submission retry logic
+- [X] Implement position modification capabilities
+- [] Develop scaling in/out functionality
+- [X] Create comprehensive risk limit enforcement system
+- [] Implement trade recording with full context information
+- [] Integrate ExecutionManager with TradeRecorder
+
+## Strategy Module
+- [X] Create StrategyManager.cs for coordination
+- [X] Implement StrategyBase.cs abstract base class
+- [X] Develop SignalGeneratorBase.cs for signal generation
+- [X] Create EntryExitBase.cs for entry/exit logic
+- [X] Implement StandardIndicators.cs wrappers
+- [X] Develop IndicatorCombiner.cs for multi-indicator logic
+- [X] Implement specific strategies:
+  - [X] TrendFollowing.cs implementation
+  - [X] MeanReversion.cs implementation
+  - [X] Breakout.cs implementation
+  - [ ] Scalping.cs implementation
+- [ ] Create multi-timeframe signal confirmation
+- [ ] Implement pattern recognition algorithms
+- [X] Develop trailing stop exit strategies
+- [ ] Implement partial position exit logic
+
+## Analysis Module
+- [ ] Create PerformanceTracker.cs for real-time monitoring
+- [ ] Implement EquityCurve.cs calculation
+- [ ] Develop TradeAnalytics.cs for statistics
+- [ ] Create Drawdown.cs for drawdown analysis
+- [ ] Implement ReportGenerator.cs for performance reporting
+- [ ] Develop KPI calculation system
+- [ ] Create trade pattern identification logic
+- [ ] Implement expectancy and risk-adjusted return calculations
+- [ ] Develop market condition performance analysis
+- [ ] Create performance anomaly detection system
+
+## Optimization Module
+- [ ] Implement ParameterOptimizer.cs for strategy optimization
+- [ ] Create WalkForwardTester.cs for walk-forward analysis
+- [ ] Develop MonteCarloSimulator.cs for simulations
+- [ ] Implement OptimizationMetrics.cs scoring functions
+- [ ] Create multi-objective optimization algorithms
+- [ ] Develop parameter stability analysis
+- [ ] Implement confidence interval calculations
+- [ ] Create visualization for parameter sensitivity
+- [ ] Develop overfitting prevention mechanisms
+- [ ] Implement optimization report generation
+
+## UI Module
+- [ ] Create custom UI controls:
+  - [ ] DashboardControl.cs for main interface
+  - [ ] StrategyControl.cs for strategy configuration
+  - [ ] PerformanceControl.cs for visualization
+- [ ] Implement visualization components:
+  - [ ] ChartMarkers.cs for trade visualization
+  - [ ] EquityChart.cs for equity curve display
+  - [ ] IndicatorVisualizer.cs for indicator display
+- [ ] Create dialog windows:
+  - [ ] ConfigurationDialog.cs for settings
+  - [ ] AlertDialog.cs for notifications
+  - [ ] ReportDialog.cs for performance reports
+- [ ] Implement customizable dashboard layouts
+- [ ] Create visual parameter adjustment controls
+- [ ] Develop chart annotation system
+- [ ] Implement alert configuration and management
+- [ ] Create configuration validation UI
+
+## Data Module
+- [ ] Implement DataStorage.cs for persistence management
+- [ ] Create DatabaseManager.cs for database operations
+- [ ] Develop FileStorage.cs for file-based storage
+- [ ] Implement ExportManager.cs for data export
+- [ ] Create efficient data compression for history
+- [ ] Design and implement database schema
+- [ ] Develop query optimization for performance
+- [ ] Create backup and restore functionality
+- [ ] Implement selective data export options
+- [ ] Develop data synchronization between instances
+
+## External Module
+- [ ] Create notification services:
+  - [ ] EmailService.cs for email alerts
+  - [ ] TelegramService.cs for Telegram integration
+  - [ ] PushNotification.cs for mobile alerts
+- [ ] Implement third-party integrations:
+  - [ ] ExternalApiClient.cs for API access
+  - [ ] NewsProvider.cs for market news
+  - [ ] EconomicCalendar.cs for economic data
+- [ ] Develop import functionality:
+  - [ ] StrategyImporter.cs for strategy import
+  - [ ] HistoricalDataImporter.cs for data import
+  - [ ] ConfigurationImporter.cs for settings import
+- [ ] Create customizable notification templates
+- [ ] Implement secure API key management
+- [ ] Develop data validation for imports
+
+## Testing
+- [ ] Set up testing framework (NUnit/MSTest)
+- [ ] Create unit tests for all core components
+- [ ] Implement integration tests for module interactions
+- [ ] Develop backtesting validation suite
+- [ ] Create tests for error handling and recovery
+- [ ] Implement performance benchmark tests
+- [ ] Develop UI component tests
+- [ ] Create test fixtures and mock data
+- [ ] Implement continuous integration pipeline
+- [ ] Document testing procedures and best practices
+
+## Documentation
+- [ ] Create user documentation:
+  - [ ] Installation and setup guide
+  - [ ] Configuration manual
+  - [ ] Trading strategy descriptions
+  - [ ] Troubleshooting guide
+- [ ] Develop developer documentation:
+  - [ ] Architecture overview
+  - [ ] API reference
+  - [ ] Extension points guide
+  - [ ] Development environment setup
+- [ ] Create operations documentation:
+  - [ ] Deployment procedures
+  - [ ] Backup and recovery guide
+  - [ ] Performance tuning recommendations
+  - [ ] Security considerations
+- [ ] Implement XML code comments
+- [ ] Create markdown files for GitHub repository
+- [ ] Develop sample configuration guides
+
+## Deployment & Release Preparation
+- [ ] Create build automation scripts
+- [ ] Implement semantic versioning system
+- [ ] Create package deployment process
+- [ ] Develop installation wizards or guides
+- [ ] Create configuration migration tools
+- [ ] Implement rollback procedures
+- [ ] Develop release testing protocol
+- [ ] Create changelog generation process
+- [ ] Implement license management
+- [ ] Prepare marketing materials and screenshots
+
+## Compliance & Security
+- [ ] Implement appropriate risk warnings
+- [ ] Create comprehensive audit logging
+- [ ] Develop secure credential storage
+- [ ] Implement role-based access control
+- [ ] Create data encryption for sensitive information
+- [ ] Develop compliance reporting features
+- [ ] Implement trade record archiving
+- [ ] Create security review documentation
+- [ ] Develop privacy policy and terms of use
+- [ ] Implement broker-specific compliance features
+
+## Performance Optimization
+- [ ] Conduct performance profiling
+- [ ] Optimize tick processing latency
+- [ ] Improve memory usage patterns
+- [ ] Optimize database access
+- [ ] Improve UI responsiveness
+- [ ] Reduce CPU usage during idle periods
+- [ ] Optimize chart rendering
+- [ ] Improve startup time
+- [ ] Optimize backtest performance
+- [ ] Create performance monitoring dashboards
+
+## Maintenance & Roadmap Planning
+- [ ] Plan version update schedule
+- [ ] Create feature roadmap document
+- [ ] Develop user feedback collection system
+- [ ] Implement analytics for feature usage
+- [ ] Create bug tracking and reporting process
+- [ ] Develop backward compatibility policy
+- [ ] Create deprecation policy for features
+- [ ] Plan future API integration roadmap
+- [ ] Document technical debt and refactoring needs
+- [ ] Create long-term architecture evolution plan 

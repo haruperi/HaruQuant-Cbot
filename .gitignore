@@ -1,0 +1,217 @@
+## Ignore Visual Studio temporary files, build results, and C# project files that should not be committed
+## See https://github.com/github/gitignore/blob/main/VisualStudio.gitignore
+
+# User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# User-specific files (MonoDevelop/Xamarin Studio)
+*.userprefs
+
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio cache files
+.vs/
+$(SolutionDir)/*.dbmdl
+
+# Visual Studio symbol files
+*.pdb
+*.ipdb
+*.pgd
+
+# Visual Studio VSIX
+*.vsix
+*.vsixmanifest
+
+# Visual Studio Test Explorer
+*.vsmdi
+*.testsettings
+
+# ReSharper is a .NET IDE extension (e.g. VS)
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.DotSettings.user
+
+# Rider is a .NET IDE (JetBrains)
+.idea/
+
+# Backup files
+*.bak
+
+# NuGet Packages
+# except build/, which is used as an MSBuild target.
+packages/*
+!packages/build/
+
+# Roslyn files
+*.ruleset
+
+# Temporary files
+*.tmp
+*.temp
+
+# cTrader specific files
+# Build output folder for cBots and indicators
+**/bin/Debug/
+**/bin/Release/
+**/obj/Debug/
+**/obj/Release/
+# cTrader specific log files if any (assuming they might be in a 'Logs' folder or have .log extension)
+# *.log (already covered by [Ll]og/)
+
+# If you have other specific files or folders to ignore, add them below
+# For example:
+# MySensitiveData.xml
+# MyLocalSettings.config 
+
+# VS Code local history
+.history/
+
+# cTrader specific
+*.cbot
+*.cbotx
+*.cbotz
+*.cbotz.tmp
+*.cbotz.bak
+
+# Visual Studio files
+.vs/
+*.user
+*.userosscache
+*.suo
+*.userprefs
+*.dbmdl
+*.dbproj.schemaview
+*.jfm
+*.pfx
+*.publishsettings
+orleans.codegen.cs
+
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio cache/options directory
+.vs/
+
+# MSTest test Results
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+
+# NUnit
+*.VisualState.xml
+TestResult.xml
+nunit-*.xml
+
+# Build Results of an ATL Project
+[Dd]ebugPS/
+[Rr]eleasePS/
+dlldata.c
+
+# .NET Core
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Files built by Visual Studio
+*_i.c
+*_p.c
+*_h.h
+*.ilk
+*.meta
+*.obj
+*.iobj
+*.pch
+*.pdb
+*.ipdb
+*.pgc
+*.pgd
+*.rsp
+*.sbr
+*.tlb
+*.tli
+*.tlh
+*.tmp
+*.tmp_proj
+*_wpftmp.csproj
+*.log
+*.vspscc
+*.vssscc
+.builds
+*.pidb
+*.svclog
+*.scc
+
+# Visual Studio profiler
+*.psess
+*.vsp
+*.vspx
+*.sap
+
+# Visual Studio code coverage results
+*.coverage
+*.coveragexml
+
+# NuGet Packages
+*.nupkg
+# NuGet Symbol Packages
+*.snupkg
+# The packages folder can be ignored because of Package Restore
+**/[Pp]ackages/*
+# except build/, which is used as an MSBuild target.
+!**/[Pp]ackages/build/
+# Uncomment if necessary however generally it will be regenerated when needed
+#!**/[Pp]ackages/repositories.config
+# NuGet v3's project.json files produces more ignorable files
+*.nuget.props
+*.nuget.targets
+
+# Windows image file caches
+Thumbs.db
+ehthumbs.db
+
+# Folder config file
+Desktop.ini
+
+# Recycle Bin used on file shares
+$RECYCLE.BIN/
+
+# VS Code directories
+.vscode/
+
+# Windows Installer files
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+
+# Windows shortcuts
+*.lnk 
