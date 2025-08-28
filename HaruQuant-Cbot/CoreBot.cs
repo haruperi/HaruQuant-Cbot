@@ -417,13 +417,6 @@ namespace cAlgo.Robots
 
                 _logger?.Debug($"MA Values - Fast: {currentFastMA:F5}/{previousFastMA:F5}, Slow: {currentSlowMA:F5}/{previousSlowMA:F5}, Bias: {currentBiasMA:F5}");
 
-                // Check trading hours if enabled
-                if (UseTradingHours && !_riskManager.IsWithinTradingHours(UseTradingHours, TradingHourStart, TradingHourEnd))
-                {
-                    _logger?.Debug("Outside trading hours - no new trades");
-                    return;
-                }
-
                 // Check if we already have positions
                 var buyPositions = Positions.FindAll(OrderLabel, Symbol.Name, TradeType.Buy);
                 var sellPositions = Positions.FindAll(OrderLabel, Symbol.Name, TradeType.Sell);
@@ -482,9 +475,29 @@ namespace cAlgo.Robots
         {
             try
             {
-                // Calculate position size
+                // Calculate position size for validation
                 var volumeInUnits = _riskManager.CalculatePositionSize(
                     RiskSizeMode, DefaultPositionSize, RiskPerTrade, DefaultStopLoss, FixedRiskAmount, RiskBase, FixedRiskBalance);
+                
+                var positionSizeInLots = Symbol.VolumeInUnitsToQuantity(volumeInUnits);
+                
+                // Validate trade before execution
+                var isTradeValid = _riskManager.ValidateTrade(
+                    Symbol,
+                    positionSizeInLots,
+                    DefaultStopLoss,
+                    tradeType,
+                    UseTradingHours,
+                    TradingHourStart,
+                    TradingHourEnd,
+                    TradingDirection,
+                    MaxSpreadInPips);
+                
+                if (!isTradeValid)
+                {
+                    _logger?.Warning($"Trade validation failed for {tradeType} order. Trade cancelled.");
+                    return;
+                }
                 
                 // Calculate stop loss and take profit
                 var (stopLoss, takeProfit) = _riskManager.CalculateStopLossAndTakeProfit(
