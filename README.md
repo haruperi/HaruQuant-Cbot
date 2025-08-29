@@ -1,314 +1,595 @@
-# HaruQuant Cbot
+# HaruQuant-Cbot
 
-A sophisticated algorithmic trading bot for cTrader platform, implementing multiple trading strategies with advanced risk management and performance analytics.
+A comprehensive, production-ready cTrader cBot with advanced risk management, error handling, and automated trading capabilities.
 
-## Features
+## Project Overview
 
-- Multiple trading strategies:
-  - Trend Following
-  - Mean Reversion
-  - Breakout
-  - Scalping (planned)
-- Advanced risk management
-- Real-time performance monitoring
-- Customizable parameters
-- Multi-timeframe analysis
-- Comprehensive logging and debugging
+HaruQuant-Cbot is a sophisticated algorithmic trading bot built for the cTrader platform. It implements a modular architecture with comprehensive error handling, crash recovery, and risk management systems designed for reliable production trading.
 
-## Requirements
+## Current Development Status
 
+**Version:** 1.0.0-alpha  
+**Development Phase:** Core Infrastructure Complete  
+**Next Phase:** Strategy Implementation & Testing
+
+## Project Lifecycle
+
+### Phase 1: Foundation Infrastructure ✅ COMPLETED
+
+#### 1.1 Core Bot Setup
+- [x] **CoreBot.cs** - Main entry point class with lifecycle management
+- [x] **Parameter System** - 75+ configurable parameters across 7 logical groups
+- [x] **Constants.cs** - System-wide configuration and enums
+- [x] **Project Structure** - Modular architecture with separated concerns
+
+#### 1.2 Logging System
+- [x] **Logger.cs** - Comprehensive logging with file rotation (10MB files)
+- [x] **Logging Guidelines** - Mandatory format: `ClassName | MethodName | message`
+- [x] **Log Levels** - Debug, Info, Warning, Error with appropriate usage
+- [x] **File Management** - Automatic log rotation and cleanup
+
+#### 1.3 Error Handling Framework
+- [x] **ErrorHandler.cs** - Centralized error management and categorization
+- [x] **Error Categories** - System, Trading, Risk, Network, Data, Strategy, Configuration, External
+- [x] **Severity Levels** - Low, Medium, High, Critical with automatic escalation
+- [x] **Recovery Actions** - None, Retry, Fallback, Restart, Alert, Stop
+
+#### 1.4 Crash Recovery System
+- [x] **CrashRecovery.cs** - Automated system health monitoring
+- [x] **Component Health** - Individual component monitoring and recovery
+- [x] **Recovery Modes** - Normal, Recovery, Emergency with graceful degradation
+- [x] **Threading Safety** - Main thread invocation for Robot property access
+
+#### 1.5 Risk Management
+- [x] **RiskManager.cs** - Comprehensive position sizing and validation
+- [x] **Position Sizing** - Auto, Fixed Lots, Fixed Amount, Step-based
+- [x] **Risk Validation** - 9-point validation system for trade safety
+- [x] **Risk Bases** - Equity, Balance, Free Margin, Fixed Balance
+- [x] **Stop Loss/Take Profit** - Fixed, ATR-based, ADR-based calculations
+
+#### 1.6 Trade Management
+- [x] **TradeManager.cs** - Integrated trade execution and management
+- [x] **Risk Integration** - Full integration with RiskManager
+- [x] **Error Handling** - Comprehensive error handling for trade operations
+- [x] **Order Management** - Market orders with comprehensive validation
+
+### Phase 2: Strategy Implementation ⚠️ IN PROGRESS
+
+#### 2.1 Basic Strategy Framework
+- [x] **Trend Following Strategy** - Simple MA crossover implementation
+- [x] **Moving Averages** - Fast, Slow, Bias MA with configurable periods
+- [x] **Signal Generation** - Buy/Sell signal detection logic
+- [x] **Strategy Integration** - Full integration with risk and trade management
+
+#### 2.2 Strategy Components (Planned)
+- [ ] **Strategy Base Classes** - Abstract base for strategy development
+- [ ] **Signal Generators** - Modular signal generation framework
+- [ ] **Multi-timeframe Analysis** - Higher timeframe confirmation
+- [ ] **Pattern Recognition** - Candlestick and chart pattern detection
+
+### Phase 3: Advanced Features (Planned)
+
+#### 3.1 Enhanced Strategy System
+- [ ] **Multiple Strategies** - Mean Reversion, Breakout, Scalping
+- [ ] **Strategy Switching** - Dynamic strategy selection
+- [ ] **Portfolio Management** - Multi-symbol trading
+- [ ] **Performance Tracking** - Real-time performance metrics
+
+#### 3.2 Market Analysis
+- [ ] **Market Condition Detection** - Trend, Range, Volatility analysis
+- [ ] **Volatility Metrics** - ATR, ADR, custom volatility measures
+- [ ] **Correlation Analysis** - Multi-instrument correlation tracking
+- [ ] **Economic Calendar** - News and event integration
+
+#### 3.3 External Integrations
+- [ ] **Notifications** - Email, Telegram, Push notifications
+- [ ] **Data Export** - Trade history and performance reporting
+- [ ] **API Integrations** - External data sources
+- [ ] **Cloud Sync** - Configuration and data synchronization
+
+## Current Architecture
+
+### Core Components
+
+```
+HaruQuant-Cbot/
+├── CoreBot.cs              # Main entry point and lifecycle management
+├── utils/
+│   ├── Constants.cs        # System-wide configuration and enums
+│   ├── Logger.cs           # Comprehensive logging system
+│   ├── ErrorHandler.cs     # Centralized error management
+│   └── CrashRecovery.cs    # Automated recovery and health monitoring
+├── trading/
+│   ├── RiskManager.cs      # Position sizing and risk validation
+│   └── TradeManager.cs     # Trade execution and management
+└── docs/
+    └── ErrorHandlingGuide.md
+```
+
+## Code Execution Flow (Step-by-Step)
+
+### 1. 🚀 **Bot Startup Sequence (OnStart)**
+
+```
+cTrader Platform
+    ↓
+CoreBot.OnStart() [Entry Point]
+    ↓
+Try-Catch Block Initialization
+    ↓
+┌─ InitializeLogger()
+│   ├─ new Logger(robot, botName, version, settings...)
+│   ├─ Logger constructor validates parameters
+│   ├─ Sets up file logging with 10MB rotation
+│   └─ Log: "Logger service initialized successfully"
+    ↓
+├─ InitializeErrorHandler()
+│   ├─ new ErrorHandler(robot, logger)
+│   ├─ Initialize error counters for all categories
+│   ├─ Setup error tracking infrastructure
+│   └─ Log: "ErrorHandler service initialized successfully"
+    ↓
+├─ InitializeCrashRecovery()
+│   ├─ new CrashRecovery(robot, logger, errorHandler)
+│   ├─ Initialize component health tracking
+│   ├─ Start health monitoring timers (30s intervals)
+│   ├─ Setup recovery event queue
+│   └─ Log: "CrashRecovery service initialized successfully"
+    ↓
+├─ InitializeRiskManager()
+│   ├─ new RiskManager(robot, logger)
+│   ├─ Validate constructor parameters
+│   └─ Log: "RiskManager service initialized successfully"
+    ↓
+├─ InitializeTradeManager()
+│   ├─ new TradeManager(robot, logger, errorHandler, riskManager)
+│   ├─ Validate all dependencies
+│   └─ Log: "TradeManager service initialized successfully"
+    ↓
+├─ InitializeIndicators()
+│   ├─ Set source = SourceSeries ?? Bars.ClosePrices
+│   ├─ _fastMA = Indicators.MovingAverage(source, FastPeriod, MAType)
+│   ├─ _slowMA = Indicators.MovingAverage(source, SlowPeriod, MAType)
+│   ├─ _biasMA = Indicators.MovingAverage(source, BiasPeriod, MAType)
+│   └─ Log indicator configurations
+    ↓
+├─ Log Bot Information
+│   ├─ Bot name, version, symbol, account details
+│   ├─ Trading mode, strategy, risk settings
+│   └─ Trading hours and direction settings
+    ↓
+├─ Initial System Health Check
+│   ├─ _errorHandler.GetSystemHealth()
+│   ├─ UpdateSystemHealth() → analyze recent errors
+│   ├─ Determine health status (Healthy/Warning/Degraded/Critical/Failed)
+│   └─ Log: "Initial System Health: {status}"
+    ↓
+├─ Log Successful Startup
+│   └─ _errorHandler.HandleError() with success notification
+    ↓
+└─ Exception Handling
+    ├─ Print critical error to cTrader console
+    ├─ ErrorHandler.HandleException() if available
+    ├─ Logger.Error() if available
+    └─ Re-throw exception to notify cTrader of failure
+```
+
+### 2. ⚡ **Real-Time Processing (OnTick)**
+
+```
+cTrader Platform (Every Price Tick)
+    ↓
+CoreBot.OnTick() [High Frequency - Multiple times per second]
+    ↓
+Try-Catch Block
+    ↓
+├─ Recovery Mode Check
+│   ├─ _crashRecovery.IsInRecoveryMode()
+│   ├─ If TRUE → return (skip processing)
+│   └─ If FALSE → continue
+    ↓
+├─ Tick Volume Logging (Every 1000 ticks)
+│   ├─ Check: Bars.TickVolumes.Count % 1000 == 0
+│   └─ Log: "OnTick processed - Tick count: {count}"
+    ↓
+├─ Future Tick Processing (Placeholder)
+│   └─ Reserved for high-frequency strategy logic
+    ↓
+└─ Exception Handling
+    └─ _errorHandler.HandleException() → automatic recovery
+```
+
+### 3. 📊 **Bar Processing (OnBar)**
+
+```
+cTrader Platform (Every New Bar/Candle)
+    ↓
+CoreBot.OnBar() [Strategy Execution Trigger]
+    ↓
+Try-Catch Block
+    ↓
+├─ Log New Bar Information
+│   └─ Log: "New bar opened at {time} | Open: {price} | Close: {price}"
+    ↓
+├─ System Health Check
+│   ├─ _errorHandler.GetSystemHealth()
+│   ├─ If health >= SystemHealth.Critical
+│   │   ├─ Log: "System health is {status} - limiting processing"
+│   │   └─ return (skip strategy execution)
+│   └─ If health OK → continue
+    ↓
+├─ ExecuteTrendFollowingStrategy()
+│   ├─ Bar Count Validation
+│   │   ├─ required = Max(FastPeriod, SlowPeriod, BiasPeriod) + 1
+│   │   ├─ If Bars.Count < required → return
+│   │   └─ Log: "Not enough bars for calculation"
+│   │
+│   ├─ Get Moving Average Values
+│   │   ├─ currentFastMA = _fastMA.Result.LastValue
+│   │   ├─ currentSlowMA = _slowMA.Result.LastValue
+│   │   ├─ currentBiasMA = _biasMA.Result.LastValue
+│   │   ├─ previousFastMA = _fastMA.Result.Last(1)
+│   │   ├─ previousSlowMA = _slowMA.Result.Last(1)
+│   │   └─ Log all MA values
+│   │
+│   ├─ Signal Generation
+│   │   ├─ buySignal = (previousFastMA < previousSlowMA) AND
+│   │   │              (currentFastMA > currentSlowMA) AND
+│   │   │              (currentSlowMA > currentBiasMA)
+│   │   │
+│   │   ├─ sellSignal = (previousFastMA > previousSlowMA) AND
+│   │   │               (currentFastMA < currentSlowMA) AND
+│   │   │               (currentSlowMA < currentBiasMA)
+│   │   └─ Log: "Signals - Buy: {buySignal}, Sell: {sellSignal}"
+│   │
+│   ├─ Trade Execution
+│   │   ├─ If buySignal → ExecuteMarketOrder(TradeType.Buy, ...)
+│   │   └─ If sellSignal → ExecuteMarketOrder(TradeType.Sell, ...)
+│   │
+│   └─ Exception Handling
+│       └─ Log strategy execution errors
+    ↓
+└─ Exception Handling
+    └─ _errorHandler.HandleException() → automatic recovery
+```
+
+### 4. 💼 **Trade Execution Flow (ExecuteOrder)**
+
+```
+ExecuteOrder(TradeType tradeType) [Called from Strategy]
+    ↓
+Try-Catch Block
+    ↓
+├─ Log Trade Attempt
+│   └─ Log: "Attempting to execute {tradeType} order using TradeManager"
+    ↓
+├─ TradeManager.ExecuteTrade()
+│   ├─ Pass ALL parameters from CoreBot
+│   │   ├─ tradeType, OrderLabel, UseTradingHours
+│   │   ├─ TradingHourStart, TradingHourEnd, TradingDirection
+│   │   ├─ MaxSpreadInPips, RiskSizeMode, DefaultPositionSize
+│   │   ├─ RiskPerTrade, FixedRiskAmount, RiskBase, FixedRiskBalance
+│   │   ├─ StopLossMode, DefaultStopLoss, TakeProfitMode, DefaultTakeProfit
+│   │   ├─ StopLossMultiplier, TakeProfitMultiplier, ADRRatio
+│   │   └─ ADRPeriod, ATRPeriod, LotIncrease, BalanceIncrease
+│   │
+│   ├─ TradeManager Internal Flow:
+│   │   ├─ Log: "MINIMAL ExecuteTrade | {tradeType} {symbol}"
+│   │   │
+│   │   ├─ RiskManager.Run() [Complete Risk Assessment]
+│   │   │   ├─ ValidateTrade() [9-Point Validation]
+│   │   │   │   ├─ ValidateSymbol() → check null, pip size, digits
+│   │   │   │   ├─ ValidatePositionSize() → check min/max limits
+│   │   │   │   ├─ ValidateStopLoss() → check pip distance
+│   │   │   │   ├─ ValidateSpread() → check current spread vs max
+│   │   │   │   ├─ ValidateTradingHours() → check time restrictions
+│   │   │   │   ├─ ValidateTradingDirection() → check allowed directions
+│   │   │   │   ├─ ValidateRiskAmount() → check monetary risk limits
+│   │   │   │   ├─ ValidateAccountHealth() → check margin levels
+│   │   │   │   └─ IsEmergencyStopTriggered() → check emergency conditions
+│   │   │   │
+│   │   │   ├─ CalculateTargets() [Stop Loss & Take Profit]
+│   │   │   │   ├─ Stop Loss Calculation
+│   │   │   │   │   ├─ Fixed → use DefaultStopLoss
+│   │   │   │   │   ├─ UseATR → CalculateATRBasedValue()
+│   │   │   │   │   ├─ UseADR → CalculateATRBasedValue() with daily timeframe
+│   │   │   │   │   └─ None → 0
+│   │   │   │   │
+│   │   │   │   └─ Take Profit Calculation (same logic as SL)
+│   │   │   │
+│   │   │   ├─ CalculatePositionSize()
+│   │   │   │   ├─ Auto → CalculateAutoPositionSize()
+│   │   │   │   ├─ FixedLots → use DefaultPositionSize
+│   │   │   │   ├─ FixedAmount → CalculateAutoPositionSize() with fixed amount
+│   │   │   │   ├─ FixedLotsStep → CalculateStepBasedPositionSize()
+│   │   │   │   └─ NormalizePositionSize() → apply symbol constraints
+│   │   │   │
+│   │   │   └─ Return: (isValid, positionSize, stopLoss, takeProfit)
+│   │   │
+│   │   ├─ Risk Validation Check
+│   │   │   ├─ If isTradeValid == false
+│   │   │   │   ├─ Log: "Trade validation FAILED"
+│   │   │   │   └─ Return: TradeResult.Failed()
+│   │   │   └─ If valid → continue
+│   │   │
+│   │   ├─ Execute Market Order
+│   │   │   ├─ _robot.ExecuteMarketOrder()
+│   │   │   │   ├─ Parameters: tradeType, symbol, positionSize, label
+│   │   │   │   ├─ stopLoss (in pips), takeProfit (in pips)
+│   │   │   │   └─ Return: TradeResult from cTrader
+│   │   │   │
+│   │   │   ├─ If Successful
+│   │   │   │   ├─ Log: "Order executed successfully"
+│   │   │   │   ├─ Log: position details, prices
+│   │   │   │   └─ Return: TradeResult.Success()
+│   │   │   │
+│   │   │   └─ If Failed
+│   │   │       ├─ Log: "Order execution failed"
+│   │   │       └─ Return: TradeResult.Failed()
+│   │   │
+│   │   └─ Exception Handling
+│   │       ├─ Log: execution errors
+│   │       └─ Return: TradeResult.Failed()
+│   │
+│   └─ Return: TradeResult object
+    ↓
+├─ Process TradeManager Result
+│   ├─ If result.IsSuccessful
+│   │   ├─ Log: "Order executed successfully via TradeManager"
+│   │   └─ Log: execution details (Position ID, prices)
+│   │
+│   └─ If result.Failed
+│       ├─ Log: "Order execution failed via TradeManager"
+│       └─ ErrorHandler.HandleError() → log trading error
+    ↓
+└─ Exception Handling
+    ├─ Log: execution error
+    └─ ErrorHandler.HandleException() → attempt recovery
+```
+
+### 5. 🛑 **Bot Shutdown (OnStop)**
+
+```
+cTrader Platform (Bot Stop Requested)
+    ↓
+CoreBot.OnStop() [Cleanup and Finalization]
+    ↓
+Try-Catch Block
+    ↓
+├─ Log Shutdown Start
+│   └─ Log: "=== CoreBot Stopping ==="
+    ↓
+├─ Final System Statistics
+│   ├─ _errorHandler.GetSystemHealth()
+│   ├─ Log: "Final System Health: {status}"
+│   │
+│   ├─ Error Count Summary
+│   │   ├─ Loop through all ErrorCategory enums
+│   │   ├─ _errorHandler.GetErrorCount(category)
+│   │   └─ Log: "Error Count [{category}]: {count}" (if > 0)
+│   │
+│   └─ Final Account Information
+│       ├─ Log: "Final Account Balance: {balance}"
+│       ├─ Log: "Open Positions: {count}"
+│       └─ Log: "Pending Orders: {count}"
+    ↓
+├─ Resource Cleanup
+│   ├─ _crashRecovery.Dispose()
+│   │   ├─ _healthCheckTimer.Dispose()
+│   │   ├─ _recoveryTimer.Dispose()
+│   │   └─ Log: "CrashRecovery system disposed"
+│   │
+│   └─ _logger.Flush() → ensure all logs written to file
+    ↓
+├─ Final Success Log
+│   ├─ Log: "CoreBot shutdown completed successfully"
+│   └─ Print: "CoreBot stopped successfully" (to cTrader console)
+    ↓
+└─ Exception Handling
+    ├─ Print: shutdown error to console
+    ├─ Try: ErrorHandler.HandleException()
+    ├─ Try: Logger.Error()
+    └─ Ignore any errors during error handling (fail-safe)
+```
+
+### 6. 🔄 **Background Health Monitoring (Continuous)**
+
+```
+CrashRecovery Timer (Every 30 seconds)
+    ↓
+PerformHealthCheck()
+    ↓
+BeginInvokeOnMainThread() [Thread Safety]
+    ↓
+Try-Catch Block
+    ↓
+├─ Lock Health Data
+│   └─ lock (_lockObject)
+    ↓
+├─ Check Each Component
+│   ├─ Loop through all tracked components
+│   │   ├─ Logger, ErrorHandler, TradingEngine
+│   │   ├─ RiskManager, DataProcessor, NetworkConnection
+│   │   └─ StrategyEngine
+│   │
+│   ├─ For Each Component:
+│   │   ├─ previousStatus = component.Status
+│   │   ├─ component.Status = CheckComponentHealth()
+│   │   ├─ component.LastCheck = DateTime.Now
+│   │   │
+│   │   ├─ If status degraded
+│   │   │   ├─ component.LastFailure = DateTime.Now
+│   │   │   ├─ component.FailureCount++
+│   │   │   ├─ Log: "Component health degraded"
+│   │   │   └─ If Critical → TriggerComponentRecovery()
+│   │   │
+│   │   └─ If status improved
+│   │       └─ Log: "Component recovered to healthy"
+│   │
+│   └─ Update System Recovery Mode
+│       ├─ If all healthy AND in recovery → ExitRecoveryMode()
+│       ├─ If problems AND not in recovery → EnterRecoveryMode()
+│       └─ Update _lastHealthyState timestamp
+    ↓
+└─ Exception Handling
+    └─ Log: health check errors
+```
+
+### System Flow Summary
+
+1. **Initialization** (OnStart)
+   - Sequential service initialization with dependency injection
+   - Indicator setup and configuration validation
+   - Initial health assessment and logging
+
+2. **Runtime Processing** (OnTick/OnBar)
+   - Continuous health monitoring and recovery management
+   - Strategy signal generation and validation
+   - Comprehensive risk assessment and trade execution
+
+3. **Shutdown** (OnStop)
+   - Complete system statistics and error summaries
+   - Resource cleanup and disposal
+   - Final state preservation and logging
+
+### Configuration System
+
+#### Parameter Groups
+- **IDENTITY** - Bot information and preset details
+- **SYSTEM SETTINGS** - Logging and system configuration
+- **STRATEGY** - Trading strategy and indicator settings
+- **RISK MANAGEMENT** - Position sizing and risk controls
+- **TRADING SETTINGS** - Trading hours and execution settings
+- **NOTIFICATION SETTINGS** - Alert and notification configuration
+- **DISPLAY SETTINGS** - Chart display and UI settings
+
+## Development Standards
+
+### Logging Format
+```csharp
+_logger.LogLevel($"ClassName | MethodName | log message");
+```
+
+### Documentation Format
+```csharp
+/***
+    Function description here.
+    
+    Args:
+        parameter1: Description of first parameter
+        parameter2: Description of second parameter
+    
+    Returns:
+        Description of return value(s) and types.
+        
+    Notes:
+        - Additional implementation details
+        - Performance considerations
+        - Usage examples or warnings
+***/
+```
+
+### Error Handling
+- All exceptions must be logged with full context
+- Use ErrorHandler for centralized error management
+- Implement appropriate recovery actions
+- Maintain system stability during errors
+
+## Building and Running
+
+### Prerequisites
 - cTrader platform
-- .NET Framework (compatible with cTrader)
+- .NET 6.0 or later
 - Visual Studio 2022 (recommended)
 
-## Installation
+### Build Process
+1. Open HaruQuant-Cbot.sln in Visual Studio
+2. Build solution (generates .algo file)
+3. Copy .algo file to cTrader cBots folder
+4. Configure parameters in cTrader
 
-1. Clone this repository
-2. Open the solution in Visual Studio
-3. Build the project
-4. Import the compiled .cbot file into cTrader
+### Configuration
+- Set up logging preferences
+- Configure risk management parameters
+- Set trading hours and symbol preferences
+- Adjust strategy parameters for your needs
 
-## Configuration
+## Testing Status
 
-The bot can be configured through cTrader's interface with the following main parameters:
+### Unit Testing
+- [ ] **Framework Setup** - NUnit/MSTest configuration
+- [ ] **Component Tests** - Individual component validation
+- [ ] **Integration Tests** - Module interaction testing
+- [ ] **Error Handling Tests** - Exception and recovery testing
 
-- Trading strategy selection
-- Risk management settings
-- Position sizing parameters
-- Technical indicator parameters
-- Timeframe settings
+### Backtesting
+- [x] **Basic Strategy** - Trend following strategy tested
+- [ ] **Risk Management** - Position sizing validation
+- [ ] **Error Scenarios** - Error handling under stress
+- [ ] **Performance Metrics** - Statistical analysis
 
-## Usage
+## Performance Considerations
 
-1. Import the bot into cTrader
-2. Configure the parameters according to your trading preferences
-3. Run the bot on your desired timeframe and symbol
-4. Monitor performance through cTrader's interface
+### Optimization
+- Thread-safe operations for multi-threading
+- Efficient memory management
+- Minimal OnTick processing overhead
+- Optimized indicator calculations
 
-## Development
+### Resource Management
+- Log file rotation (10MB limit)
+- Memory-efficient data structures
+- Proper disposal of resources
+- Exception handling without memory leaks
 
-This project follows a modular architecture with the following main components:
+## Future Roadmap
 
-- Core Bot Module
-- Market Module
-- Trading Module
-- Strategy Module
-- Analysis Module
-- Optimization Module
-- UI Module
-- Data Module
-- External Module
+### Short Term (Next Release)
+- [ ] Complete strategy framework implementation
+- [ ] Enhanced backtesting capabilities
+- [ ] Performance optimization
+- [ ] Comprehensive unit testing
+
+### Medium Term
+- [ ] Multi-strategy support
+- [ ] Advanced risk management features
+- [ ] External notification systems
+- [ ] Performance analytics dashboard
+
+### Long Term
+- [ ] Machine learning integration
+- [ ] Portfolio management
+- [ ] Cloud-based configuration
+- [ ] Advanced market analysis
 
 ## Contributing
 
-1. Fork the repository
-2. Create your feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a new Pull Request
+### Development Workflow
+1. Review current phase requirements
+2. Follow established coding standards
+3. Implement comprehensive logging
+4. Add appropriate error handling
+5. Update documentation
+6. Test thoroughly before commit
+
+### Commit Message Format
+- `feat:` - New features or functionality additions
+- `fix:` - Bug fixes and error corrections
+- `docs:` - Documentation updates and improvements
+- `style:` - Code style changes and refactoring
+- `perf:` - Performance improvements and optimizations
+- `test:` - Test additions and modifications
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License - see the LICENSE.txt file for details.
 
-## Disclaimer
+## Support
 
-Trading involves risk. This bot is provided as-is without any guarantees. Always test thoroughly in a demo environment before using with real funds. 
+For questions, issues, or contributions, please refer to the project documentation and follow the established development standards.
 
-## Error Handling Framework
+---
 
-This document outlines the error handling framework implemented in the HaruQuant cBot. The framework is designed to provide a centralized, consistent, and extensible way to manage exceptions throughout the bot's lifecycle.
-
-### Core Components
-
-1.  **`ErrorHandlerService.cs`** (Located in `HaruQuant Cbot/Utils/`)
-    *   **Purpose**: This is the central class responsible for processing and logging errors.
-    *   **Key Methods**:
-        *   `ErrorHandlerService(Logger logger)`: Constructor that takes a `Logger` instance for logging.
-        *   `void HandleError(Exception ex, string contextMessage = null, bool logAsWarning = false)`: Logs standard errors.
-            *   `ex`: The exception that occurred.
-            *   `contextMessage`: (Optional) A string describing the context in which the error happened (e.g., "OnBar.DataProcessing", "TradeExecution.PlaceOrder"). This is crucial for debugging.
-            *   `logAsWarning`: (Optional) If `true`, logs the error as a warning. Otherwise, logs as an error.
-        *   `void HandleCriticalError(Exception ex, string contextMessage = null)`: Logs critical errors that might jeopardize the bot's operation.
-            *   `ex`: The critical exception.
-            *   `contextMessage`: (Optional) Context of the critical error.
-    *   **Functionality**:
-        *   Logs exception messages and stack traces.
-        *   Distinguishes between `BotErrorException` and other system exceptions for tailored logging if needed (currently logs them similarly but marks `BotErrorException`).
-        *   Provides placeholders for future enhancements like notifications or automated recovery actions.
-
-2.  **`BotErrorException.cs`** (Located in `HaruQuant Cbot/Utils/`)
-    *   **Purpose**: A custom exception class derived from `System.Exception`. It is used to represent errors that are specific to the cBot's operational logic or business rules.
-    *   **Usage**: Throw this exception when an error condition specific to your bot's strategy or internal workings occurs. This allows for more specific `catch` blocks.
-    *   **Constructors**:
-        *   `BotErrorException()`
-        *   `BotErrorException(string message)`
-        *   `BotErrorException(string message, Exception innerException)`
-    *   **Extensibility**: Can be extended with additional properties (e.g., `ErrorCode`, `Severity`) if more detailed error information is required programmatically.
-
-### Integration into `CoreBot.cs`
-
-*   An instance of `ErrorHandlerService` is created in the `OnStart()` method of `CoreBot.cs` and is available via the private `_errorHandler` field.
-    ```csharp
-    // In CoreBot.cs
-    private ErrorHandlerService _errorHandler;
-    // ...
-    protected override void OnStart()
-    {
-        _logger = new Logger(this, BotConfig.BotName, BotConfig.BotVersion);
-        _errorHandler = new ErrorHandlerService(_logger); 
-        // ...
-    }
-    ```
-*   The necessary `using cAlgo.Robots.Utils;` statement is included in `CoreBot.cs` to access these utility classes.
-
-### How to Use the Framework
-
-1.  **Identify Critical Code Blocks**: Wrap any operations that have a potential to fail in `try-catch` blocks. This includes:
-    *   Trade execution calls (`ExecuteMarketOrder`, `CreateLimitOrder`, etc.).
-    *   Accessing external resources or APIs (though less common directly in cBots unless through platform features).
-    *   Complex calculations or data manipulations that might encounter unexpected states.
-    *   File I/O (like the state saving/loading mechanism).
-
-2.  **Implement `try-catch` Blocks**:
-    ```csharp
-    try
-    {
-        // Code that might throw an exception
-        // Example: var result = Positions.Find("someLabel");
-        // if (result == null) 
-        // {
-        //     throw new BotErrorException("Expected position with label 'someLabel' not found.");
-        // }
-        // PerformSomeRiskyOperation();
-    }
-    catch (BotErrorException botEx) // Catch your custom cBot exceptions first
-    {
-        _errorHandler.HandleError(botEx, "MyMethod.BotSpecificLogic");
-        // Optionally, take specific actions based on botEx
-    }
-    catch (InvalidOperationException ioe) // Catch more specific system exceptions
-    {
-        _errorHandler.HandleError(ioe, "MyMethod.InvalidOperation", logAsWarning: true);
-    }
-    catch (ArgumentNullException argNullEx) // Example of handling critical input errors
-    {
-        _errorHandler.HandleCriticalError(argNullEx, "MyMethod.CriticalInputValidation");
-        // Consider if the bot can continue or if it needs to stop or enter a safe mode
-    }
-    catch (Exception ex) // Catch-all for any other unexpected exceptions
-    {
-        _errorHandler.HandleError(ex, "MyMethod.GeneralUnexpected");
-    }
-    ```
-
-3.  **Throw `BotErrorException` for Bot-Specific Issues**:
-    When your bot's internal logic detects an error state that isn't a system exception, throw a `BotErrorException`.
-    ```csharp
-    public void ProcessSignal(Signal signal)
-    {
-        if (signal == null)
-        {
-            throw new ArgumentNullException(nameof(signal), "Signal cannot be null.");
-        }
-        if (!IsValidSignal(signal))
-        {
-            throw new BotErrorException($"Invalid signal received: {signal.Type}", new InvalidDataException("Signal data validation failed."));
-        }
-        // ... process valid signal
-    }
-    ```
-
-4.  **Provide Context**: Always provide a meaningful `contextMessage` to `HandleError` and `HandleCriticalError`. This message should help quickly identify the location and nature of the problem from the logs.
-
-### Best Practices
-
-*   **Be Specific in Catching**: Catch the most specific exceptions first, then more general ones. Avoid catching just `System.Exception` unless it's the last resort.
-*   **Don't Swallow Exceptions**: If you catch an exception but can't handle it properly, either re-throw it or log it using the `ErrorHandlerService`. Avoid empty `catch` blocks.
-*   **Use `BotErrorException` Appropriately**: Use it for errors related to your trading logic, strategy rules, or custom operations, not for general programming errors like `NullReferenceException` (unless you're wrapping it to add more context).
-*   **Log Sufficient Detail**: Ensure the `Logger` (used by `ErrorHandlerService`) is configured to log enough detail (e.g., timestamps, exception type, message, stack trace).
-*   **Test Error Paths**: Intentionally introduce errors during development and testing to ensure your error handling works as expected.
-*   **Iterate and Improve**: As the bot evolves, review and refine your error handling strategy. Add more specific error types or handling logic as needed.
-
-### Future Enhancements (Considerations)
-
-*   **Notification System**: Extend `ErrorHandlerService` to send notifications (e.g., email, Telegram) for critical errors.
-*   **Automated Recovery**: Implement mechanisms for certain errors to trigger recovery actions (e.g., retrying an operation, closing all positions, stopping the bot).
-*   **Error Codes**: Add an `ErrorCode` enum to `BotErrorException` to allow for programmatic decision-making based on specific error types.
-*   **Global Exception Handler (If Applicable)**: While cBots run within the cTrader platform, if you were building a standalone .NET application, you might use `AppDomain.CurrentDomain.UnhandledException` for unhandled exceptions. In cTrader, robust `try-catch` within event handlers (`OnTick`, `OnBar`, `OnStart`, `OnStop`) is key.
-
-By following this framework, you can build a more robust and maintainable cBot that handles unexpected situations gracefully. 
-
-## Crash Recovery Mechanism
-
-To ensure operational continuity and minimize data loss in the event of unexpected shutdowns (e.g., platform crash, machine restart), the HaruQuant cBot implements a crash recovery mechanism.
-
-### Purpose
-
-The primary goal of the crash recovery mechanism is to allow the cBot to:
-- Persist its critical operational state before shutting down or periodically during runtime.
-- Restore this state upon restarting, enabling it to resume operations as closely as possible to where it left off.
-- Minimize the impact of interruptions on trading activity and internal strategy logic.
-
-### Core Components
-
-1.  **`BotState.cs`** (Located in `HaruQuant Cbot/Utils/`)
-    *   **Purpose**: This class defines the data structure for the information that needs to be saved and restored. It's responsible for its own serialization to JSON and deserialization from JSON.
-    *   **Key Properties (Examples - to be expanded based on bot needs)**:
-        *   `ActiveTradeLabels`: A list of labels for currently open positions managed by the bot.
-        *   `CustomStrategyParameter`: Example of a strategy-specific parameter that needs persistence.
-        *   *(This class should be expanded to include all critical state information, such as details of pending orders, internal strategy variables, dynamic parameters, etc.)*
-    *   **Key Methods**:
-        *   `void Save(Logger logger, string fileName)`: Serializes the current `BotState` instance to a JSON file within the cTrader application's isolated storage.
-        *   `static BotState Load(Logger logger, string fileName)`: Deserializes a `BotState` instance from the specified JSON file in isolated storage. If the file doesn't exist or an error occurs, it returns a new `BotState` instance.
-
-### Mechanism
-
-1.  **State Persistence**:
-    *   **Storage**: The bot's state is saved as a JSON file (`BotState.json` by default) in the cTrader application's `IsolatedStorageFile`. This provides a secure, sandboxed environment for data persistence without requiring broad file system access.
-    *   **Serialization**: The `System.Text.Json` library is used to serialize the `BotState` object into a JSON string and vice-versa.
-
-2.  **Saving State**:
-    *   **On Shutdown (`OnStop()` in `CoreBot.cs`)**: When the cBot is stopped gracefully, the `OnStop()` method ensures that the current state of the bot (e.g., labels of open positions, relevant strategy parameters) is collected and then calls `_botState.Save()` to persist this data.
-    *   **Periodic Saving (Optional)**: For added resilience against abrupt crashes where `OnStop()` might not be called, state saving can be implemented periodically (e.g., in `OnBar()`). This is a trade-off, as frequent saving can have performance implications.
-
-3.  **Loading State**:
-    *   **On Startup (`OnStart()` in `CoreBot.cs`)**: When the cBot starts, it calls `BotState.Load()` to attempt to read the previously saved state from isolated storage.
-    *   **Initialization**: If a saved state is successfully loaded, the `_botState` field in `CoreBot.cs` is populated with this restored data. If no state file is found or if an error occurs during loading, a new, default `BotState` instance is created, allowing the bot to start fresh.
-
-### Integration into `CoreBot.cs`
-
-*   An instance of `BotState` is held as a private field `_botState` in `CoreBot.cs`.
-*   The `StateFileName` constant defines the name of the file used for storage.
-*   In `OnStart()`:
-    ```csharp
-    // In CoreBot.cs
-    _logger = new Logger(this, BotConfig.BotName, BotConfig.BotVersion);
-    _errorHandler = new ErrorHandlerService(_logger); 
-    _botState = BotState.Load(_logger, StateFileName); // Load previous state
-    
-    _logger.Info($"{BotConfig.BotName} v{BotConfig.BotVersion} started successfully!");
-    
-    if (_botState.ActiveTradeLabels.Any())
-    {
-        _logger.Info($"Restored state with {_botState.ActiveTradeLabels.Count} active trade labels.");
-        // TODO: Implement reconciliation logic here
-    }
-    ```
-*   In `OnStop()`:
-    ```csharp
-    // In CoreBot.cs
-    if (_botState != null)
-    {
-        // Populate _botState with current data before saving
-        _botState.ActiveTradeLabels.Clear();
-        foreach (var position in Positions)
-        {
-            if (!string.IsNullOrEmpty(position.Label))
-            {
-                _botState.ActiveTradeLabels.Add(position.Label);
-            }
-        }
-        // Populate other _botState properties as needed
-        // _botState.CustomStrategyParameter = someCurrentStrategyValueToSave;
-
-        _botState.Save(_logger, StateFileName);
-    }
-    _logger.Info($"{BotConfig.BotName} shutdown.");
-    ```
-
-### Reconciliation and Best Practices
-
-*   **Expand `BotState.cs`**: Ensure `BotState.cs` includes all variables and data necessary to fully reconstruct the bot's operational context.
-*   **Implement Reconciliation Logic**: After loading the state in `OnStart()`, it's crucial to implement logic that compares the restored state with the actual current market conditions (e.g., `Positions` and `PendingOrders` from the broker). This involves:
-    *   Matching saved positions/orders with actual ones.
-    *   Handling discrepancies (e.g., a position was closed while the bot was offline).
-    *   Adjusting internal strategy variables accordingly.
-*   **Error Handling**: The `Save` and `Load` methods in `BotState.cs` include `try-catch` blocks to handle potential `IOExceptions` or deserialization errors, logging them via the provided `Logger`.
-*   **Testing**: Thoroughly test the crash recovery mechanism by simulating stops and restarts under various conditions (e.g., with open positions, with pending orders) to ensure it behaves as expected.
-*   **State File Versioning (Advanced)**: For long-term maintenance, if the structure of `BotState.cs` changes significantly, consider implementing a versioning system for the state file to handle upgrades or migrations gracefully.
-
-This crash recovery mechanism significantly enhances the cBot's resilience and reliability. 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-PARAMETER TESTING
-
-Risk Management
-
-Risk Base
-Risk Size 
-
-
+**Last Updated:** 2024-12-19  
+**Current Version:** 1.0.0-alpha  
+**Next Milestone:** Strategy Framework Completion

@@ -5,12 +5,19 @@ using cAlgo.API;
 
 namespace cAlgo.Robots.Utils
 {
-    /// <summary>
-    /// Comprehensive logging service for system-wide use across all cBot components.
-    /// Provides both console and file logging with automatic log rotation and error handling.
-    /// </summary>
+    
     public class Logger
     {
+        /***
+        Comprehensive logging service for system-wide use across all cBot components.
+        Provides both console and file logging with automatic log rotation and error handling.
+        
+        Notes:
+            - Supports both console and file logging
+            - Automatic log rotation when files reach 10MB
+            - Thread-safe operations with retry logic
+            - Emergency fallback mechanisms for critical failures
+    ***/
         private readonly string _logDirectory;
         private readonly Robot _robot;
         private readonly bool _enableConsoleLogging;
@@ -24,17 +31,25 @@ namespace cAlgo.Robots.Utils
         private const int MaxBackupFiles = 10; // Increased backup files to handle more history
         private string _currentLogFile;
 
-        /// <summary>
-        /// Initializes a new instance of the Logger class
-        /// </summary>
-        /// <param name="robot">The cBot robot instance</param>
-        /// <param name="botName">Name of the bot for log file naming</param>
-        /// <param name="botVersion">Version of the bot for log file naming</param>
-        /// <param name="enableConsoleLogging">Whether to enable console logging (default: true)</param>
-        /// <param name="enableFileLogging">Whether to enable file logging (default: true)</param>
-        /// <param name="logFileName">Custom log file name (default: "cbot_log.txt")</param>
+        
         public Logger(Robot robot, string botName, string botVersion, bool enableConsoleLogging = true, bool enableFileLogging = true, string logFileName = "cbot_log.txt")
         {
+            /***
+            Initializes a new instance of the Logger class
+            
+            Args:
+                robot: The cBot robot instance
+                botName: Name of the bot for log file naming
+                botVersion: Version of the bot for log file naming
+                enableConsoleLogging: Whether to enable console logging (default: true)
+                enableFileLogging: Whether to enable file logging (default: true)
+                logFileName: Custom log file name (default: "cbot_log.txt")
+                
+            Notes:
+                - Creates log directory structure automatically
+                - Sets up timestamped log files
+                - Initializes logging configuration
+            ***/
             _robot = robot;
             _botName = botName;
             _botVersion = botVersion;
@@ -58,12 +73,18 @@ namespace cAlgo.Robots.Utils
                 Log($"Current log file: {_currentLogFile}", LogLevel.Info);
             }
         }
-
-        /// <summary>
-        /// Rotates the log file if it exceeds the maximum size limit
-        /// </summary>
+   
         private void RotateLogFileIfNeeded()
         {
+            /***
+            Rotates the log file if it exceeds the maximum size limit
+            
+            Notes:
+                - Checks if current log file exceeds 10MB limit
+                - Performs backup rotation without recursion
+                - Creates new timestamped log file
+                - Handles rotation failures with emergency fallback
+           ***/
             if (!_enableFileLogging || string.IsNullOrEmpty(_currentLogFile))
                 return;
 
@@ -77,7 +98,7 @@ namespace cAlgo.Robots.Utils
                 if (fileInfo.Length >= MaxFileSizeMB * 1024 * 1024)
                 {
                     // Use console logging to avoid recursion during rotation
-                    _robot.Print($"Log file size exceeded {MaxFileSizeMB}MB, rotating log files...");
+                    _robot.Print($"Logger | RotateLogFileIfNeeded | Log file size exceeded {MaxFileSizeMB}MB, rotating log files...");
 
                     // Perform rotation without logging to prevent recursion/stack overflow
                     PerformLogRotation();
@@ -86,33 +107,39 @@ namespace cAlgo.Robots.Utils
                     string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
                     _currentLogFile = Path.Combine(_logDirectory, $"{_botName}_{_botVersion}_{timestamp}_cbot_log.txt");
                     
-                    _robot.Print("Log file rotation completed successfully");
+                    _robot.Print($"Logger | RotateLogFileIfNeeded | Log file rotation completed successfully");
                 }
             }
             catch (Exception ex)
             {
-                _robot.Print($"Error rotating log file: {ex.Message}");
+                _robot.Print($"Logger | RotateLogFileIfNeeded | Error rotating log file: {ex.Message}");
                 // Try to continue with a new log file even if rotation failed
                 try
                 {
                     string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
                     _currentLogFile = Path.Combine(_logDirectory, $"{_botName}_{_botVersion}_{timestamp}_emergency_log.txt");
-                    _robot.Print($"Created emergency log file: {_currentLogFile}");
+                    _robot.Print($"Logger | RotateLogFileIfNeeded | Created emergency log file: {_currentLogFile}");
                 }
                 catch (Exception emergencyEx)
                 {
-                    _robot.Print($"Failed to create emergency log file: {emergencyEx.Message}");
+                    _robot.Print($"Logger | RotateLogFileIfNeeded | Failed to create emergency log file: {emergencyEx.Message}");
                     // Disable file logging to prevent further issues
                     _currentLogFile = null;
                 }
             }
         }
 
-        /// <summary>
-        /// Performs the actual log rotation without any logging to prevent recursion
-        /// </summary>
         private void PerformLogRotation()
         {
+            /***
+            Performs the actual log rotation without any logging to prevent recursion
+            
+            Notes:
+                - Deletes oldest backup files first
+                - Shifts existing backups to make room
+                - Moves current log to backup_1 position
+                - Handles file conflicts and errors gracefully
+            ***/
             try
             {
                 // Delete oldest backup files to make room (delete oldest first)
@@ -151,17 +178,27 @@ namespace cAlgo.Robots.Utils
             }
             catch (Exception ex)
             {
-                _robot.Print($"Error during log rotation process: {ex.Message}");
+                _robot.Print($"Logger | PerformLogRotation | Error during log rotation process: {ex.Message}");
                 // Don't throw - let the caller handle creating a new log file
             }
         }
 
-        /// <summary>
-        /// Writes a message to the log file with retry logic
-        /// </summary>
-        /// <param name="message">The message to write</param>
+        
         private void WriteToFile(string message)
         {
+            /***
+            Writes a message to the log file with retry logic
+            
+            Args:
+                message: The message to write to the file
+                
+            Notes:
+                - Thread-safe file writing with lock
+                - Retry logic for transient file access issues
+                - Handles various file system exceptions
+                - Emergency fallback for critical failures
+            ***/
+
             if (!_enableFileLogging || string.IsNullOrEmpty(_currentLogFile))
                 return;
 
@@ -182,13 +219,13 @@ namespace cAlgo.Robots.Utils
                         catch (Exception rotationEx)
                         {
                             // If rotation fails, continue with current file
-                            _robot.Print($"Log rotation failed, continuing with current file: {rotationEx.Message}");
+                            _robot.Print($"Logger | WriteToFile | Log rotation failed, continuing with current file: {rotationEx.Message}");
                         }
 
                         // Ensure we still have a valid log file
                         if (string.IsNullOrEmpty(_currentLogFile))
                         {
-                            _robot.Print("No valid log file available, skipping file logging for this message");
+                            _robot.Print($"Logger | WriteToFile | No valid log file available, skipping file logging for this message");
                             return;
                         }
 
@@ -204,12 +241,12 @@ namespace cAlgo.Robots.Utils
                 }
                 catch (UnauthorizedAccessException accessEx)
                 {
-                    _robot.Print($"Access denied to log file: {accessEx.Message}");
+                    _robot.Print($"Logger | WriteToFile | Access denied to log file: {accessEx.Message}");
                     break; // Don't retry on access denied
                 }
                 catch (DirectoryNotFoundException dirEx)
                 {
-                    _robot.Print($"Log directory not found: {dirEx.Message}");
+                    _robot.Print($"Logger | WriteToFile | Log directory not found: {dirEx.Message}");
                     // Try to recreate directory
                     try
                     {
@@ -230,29 +267,37 @@ namespace cAlgo.Robots.Utils
                     }
                     else
                     {
-                        _robot.Print($"IO Error after {MaxRetries} attempts: {ioEx.Message}");
+                        _robot.Print($"Logger | WriteToFile | IO Error after {MaxRetries} attempts: {ioEx.Message}");
                     }
                 }
                 catch (Exception ex)
                 {
-                    _robot.Print($"Unexpected error writing to log file: {ex.Message}");
+                    _robot.Print($"Logger | WriteToFile | Unexpected error writing to log file: {ex.Message}");
                     break; // Don't retry on unexpected errors
                 }
             }
 
             if (!success)
             {
-                _robot.Print($"Failed to write to log file after {MaxRetries} attempts. Message will be lost: {message.Substring(0, Math.Min(100, message.Length))}...");
+                _robot.Print($"Logger | WriteToFile | Failed to write to log file after {MaxRetries} attempts. Message will be lost: {message.Substring(0, Math.Min(100, message.Length))}...");
             }
         }
-
-        /// <summary>
-        /// Logs a message with the specified log level
-        /// </summary>
-        /// <param name="message">The message to log</param>
-        /// <param name="level">The log level</param>
+ 
         public void Log(string message, LogLevel level = LogLevel.Info)
         {
+            /***
+            Logs a message with the specified log level
+            
+            Args:
+                message: The message to log
+                level: The log level (default: Info)
+                
+            Notes:
+                - Formats message with timestamp and log level
+                - Outputs to both console and file if enabled
+                - Thread-safe operation
+            ***/
+
             string formattedMessage = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [{level}] - {message}";
 
             if (_enableConsoleLogging)
@@ -263,31 +308,54 @@ namespace cAlgo.Robots.Utils
             WriteToFile(formattedMessage);
         }
 
-        /// <summary>
-        /// Logs an informational message
-        /// </summary>
-        /// <param name="message">The message to log</param>
+        
         public void Info(string message)
         {
+            /***
+            Logs an informational message
+            
+            Args:
+                message: The message to log
+                
+            Notes:
+                - Convenience method for Info level logging
+                - Uses standard Log() method internally
+            ***/
             Log(message, LogLevel.Info);
         }
 
-        /// <summary>
-        /// Logs a warning message
-        /// </summary>
-        /// <param name="message">The message to log</param>
+        
         public void Warning(string message)
         {
+            /***
+            Logs a warning message
+            
+            Args:
+                message: The message to log
+                
+            Notes:
+                - Convenience method for Warning level logging
+                - Uses standard Log() method internally
+            ***/
             Log(message, LogLevel.Warning);
         }
 
-        /// <summary>
-        /// Logs an error message with optional exception details
-        /// </summary>
-        /// <param name="message">The error message to log</param>
-        /// <param name="ex">Optional exception to include in the log</param>
+        
         public void Error(string message, Exception ex = null)
         {
+            /***
+            Logs an error message with optional exception details
+            
+            Args:
+                message: The error message to log
+                ex: Optional exception to include in the log
+                
+            Notes:
+                - Includes full exception details if provided
+                - Adds exception type, message, and stack trace
+                - Uses Error level logging
+            ***/
+
             string errorMessage = message;
             if (ex != null)
             {
@@ -296,25 +364,41 @@ namespace cAlgo.Robots.Utils
             Log(errorMessage, LogLevel.Error);
         }
 
-        /// <summary>
-        /// Logs a debug message
-        /// </summary>
-        /// <param name="message">The message to log</param>
+        
         public void Debug(string message)
         {
+            /***
+            Logs a debug message
+            
+            Args:
+                message: The message to log
+                
+            Notes:
+                - Convenience method for Debug level logging
+                - Uses standard Log() method internally
+            ***/
             Log(message, LogLevel.Debug);
         }
 
-        /// <summary>
-        /// Logs trade-related information with additional context
-        /// </summary>
-        /// <param name="tradeAction">The trade action (e.g., "BUY", "SELL", "CLOSE")</param>
-        /// <param name="symbol">The trading symbol</param>
-        /// <param name="volume">The trade volume</param>
-        /// <param name="price">The trade price</param>
-        /// <param name="additionalInfo">Additional trade information</param>
+        
         public void LogTrade(string tradeAction, string symbol, double volume, double price, string additionalInfo = "")
         {
+            /***
+            Logs trade-related information with additional context
+            
+            Args:
+                tradeAction: The trade action (e.g., "BUY", "SELL", "CLOSE")
+                symbol: The trading symbol
+                volume: The trade volume
+                price: The trade price
+                additionalInfo: Additional trade information
+                
+            Notes:
+                - Formats trade information in standardized format
+                - Includes all relevant trade parameters
+                - Uses Info level logging
+            ***/
+
             string tradeMessage = $"TRADE: {tradeAction} {volume} {symbol} @ {price:F5}";
             if (!string.IsNullOrEmpty(additionalInfo))
             {
@@ -323,14 +407,22 @@ namespace cAlgo.Robots.Utils
             Log(tradeMessage, LogLevel.Info);
         }
 
-        /// <summary>
-        /// Logs strategy-related information
-        /// </summary>
-        /// <param name="strategyName">The name of the strategy</param>
-        /// <param name="action">The strategy action</param>
-        /// <param name="details">Additional strategy details</param>
+        
         public void LogStrategy(string strategyName, string action, string details = "")
         {
+            /***
+            Logs strategy-related information
+            
+            Args:
+                strategyName: The name of the strategy
+                action: The strategy action
+                details: Additional strategy details
+                
+            Notes:
+                - Formats strategy information with clear identification
+                - Includes strategy name and action details
+                - Uses Info level logging
+            ***/
             string strategyMessage = $"STRATEGY [{strategyName}]: {action}";
             if (!string.IsNullOrEmpty(details))
             {
@@ -339,14 +431,22 @@ namespace cAlgo.Robots.Utils
             Log(strategyMessage, LogLevel.Info);
         }
 
-        /// <summary>
-        /// Logs performance metrics
-        /// </summary>
-        /// <param name="metric">The performance metric name</param>
-        /// <param name="value">The metric value</param>
-        /// <param name="unit">The unit of measurement</param>
+        
         public void LogPerformance(string metric, double value, string unit = "")
         {
+            /***
+            Logs performance metrics
+            
+            Args:
+                metric: The performance metric name
+                value: The metric value
+                unit: The unit of measurement
+                
+            Notes:
+                - Formats performance data in standardized format
+                - Includes metric name, value, and units
+                - Uses Info level logging
+            ***/
             string performanceMessage = $"PERFORMANCE: {metric} = {value:F4}";
             if (!string.IsNullOrEmpty(unit))
             {
@@ -355,29 +455,49 @@ namespace cAlgo.Robots.Utils
             Log(performanceMessage, LogLevel.Info);
         }
 
-        /// <summary>
-        /// Gets the current log file path
-        /// </summary>
-        /// <returns>The path to the current log file</returns>
+        
         public string GetCurrentLogFile()
         {
+            /***
+            Gets the current log file path
+            
+            Returns:
+                The path to the current log file
+                
+            Notes:
+                - Returns null if file logging is disabled
+                - Useful for external log file access
+            ***/
             return _currentLogFile;
         }
 
-        /// <summary>
-        /// Gets the log directory path
-        /// </summary>
-        /// <returns>The path to the log directory</returns>
+        
         public string GetLogDirectory()
         {
+            /***
+            Gets the log directory path
+            
+            Returns:
+                The path to the log directory
+                
+            Notes:
+                - Returns the base directory for all log files
+                - Useful for log file management
+            ***/
             return _logDirectory;
         }
 
-        /// <summary>
-        /// Flushes any pending log writes (called on bot shutdown)
-        /// </summary>
+        
         public void Flush()
         {
+            /***
+            Flushes any pending log writes (called on bot shutdown)
+            
+            Notes:
+                - Ensures all log data is written to disk
+                - Called during bot shutdown process
+                - Logs final shutdown message
+           ***/
             Log("Logger shutting down...", LogLevel.Info);
             // File writes are already flushed immediately, but this provides a clean shutdown message
         }

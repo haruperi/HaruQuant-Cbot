@@ -254,11 +254,14 @@ namespace cAlgo.Robots
         private ErrorHandler _errorHandler;
         private CrashRecovery _crashRecovery;
         private RiskManager _riskManager;
+        private TradeManager _tradeManager;
         
         // Moving Average indicators for trend following strategy
         private MovingAverage _fastMA;
         private MovingAverage _slowMA;
         private MovingAverage _biasMA;
+
+        #region BOT BASE FUNCTIONS
 
         protected override void OnStart()
         {
@@ -269,33 +272,34 @@ namespace cAlgo.Robots
                 InitializeErrorHandler();
                 InitializeCrashRecovery();
                 InitializeRiskManager();
+                InitializeTradeManager();
                 
                 // Initialize trading indicators
                 InitializeIndicators();
                 
-                _logger.Info("=== CoreBot Starting ===");
-                _logger.Info($"Bot: {BotConfig.BotName} v{BotConfig.BotVersion}");
-                _logger.Info($"Symbol: {Symbol.Name}");
-                _logger.Info($"Account: {Account.Number} ({Account.BrokerName})");
-                _logger.Info($"Trading Mode: {MyTradingMode}");
-                _logger.Info($"Active Strategy: {ActiveStrategy}");
-                _logger.Info($"Symbols to Trade: {SymbolsToTrade}");
+                _logger.Info($"CoreBot | OnStart | === CoreBot Starting ===");
+                _logger.Info($"CoreBot | OnStart | Bot: {BotConfig.BotName} v{BotConfig.BotVersion}");
+                _logger.Info($"CoreBot | OnStart | Symbol: {Symbol.Name}");
+                _logger.Info($"CoreBot | OnStart | Account: {Account.Number} ({Account.BrokerName})");
+                _logger.Info($"CoreBot | OnStart | Trading Mode: {MyTradingMode}");
+                _logger.Info($"CoreBot | OnStart | Active Strategy: {ActiveStrategy}");
+                _logger.Info($"CoreBot | OnStart | Symbols to Trade: {SymbolsToTrade}");
                 
                 if (SymbolsToTrade == SymbolsToTrade.Custom && !string.IsNullOrEmpty(CustomSymbols))
                 {
-                    _logger.Info($"Custom Symbols: {CustomSymbols}");
+                    _logger.Info($"CoreBot | OnStart | Custom Symbols: {CustomSymbols}");
                 }
 
-                _logger.Info($"Risk Management - Base: {RiskBase}, Size Mode: {RiskSizeMode}");
-                _logger.Info($"Risk Per Trade: {RiskPerTrade}%");
-                _logger.Info($"Trading Hours: {(UseTradingHours ? $"{TradingHourStart} to {TradingHourEnd}" : "24/7")}");
-                _logger.Info($"Trading Direction: {TradingDirection}");
+                _logger.Info($"CoreBot | OnStart | Risk Management - Base: {RiskBase}, Size Mode: {RiskSizeMode}");
+                _logger.Info($"CoreBot | OnStart | Risk Per Trade: {RiskPerTrade}%");
+                _logger.Info($"CoreBot | OnStart | Trading Hours: {(UseTradingHours ? $"{TradingHourStart} to {TradingHourEnd}" : "24/7")}");
+                _logger.Info($"CoreBot | OnStart | Trading Direction: {TradingDirection}");
                 
                 // Perform initial system health check
                 var systemHealth = _errorHandler.GetSystemHealth();
-                _logger.Info($"Initial System Health: {systemHealth}");
+                _logger.Info($"CoreBot | OnStart | Initial System Health: {systemHealth}");
                 
-                _logger.Info("CoreBot initialization completed successfully");
+                _logger.Info($"CoreBot | OnStart | CoreBot initialization completed successfully");
                 
                 // Log successful startup to error handler
                 _errorHandler.HandleError(ErrorCategory.System, ErrorSeverity.Low, 
@@ -312,7 +316,7 @@ namespace cAlgo.Robots
                 }
                 else if (_logger != null)
                 {
-                    _logger.Error("Error during OnStart", ex);
+                    _logger.Error($"CoreBot | OnStart | Error during OnStart - {ex.Message}", ex);
                 }
                 
                 // Re-throw to ensure cTrader is aware of the startup failure
@@ -320,211 +324,23 @@ namespace cAlgo.Robots
             }
         }
 
-        /// <summary>
-        /// Initializes the Logger service with user parameters
-        /// </summary>
-        private void InitializeLogger()
-        {
-            _logger = new Logger(
-                robot: this,
-                botName: BotConfig.BotName,
-                botVersion: BotConfig.BotVersion,
-                enableConsoleLogging: EnableConsoleLogging,
-                enableFileLogging: EnableFileLogging,
-                logFileName: LogFileName
-            );
-            
-            _logger.Info("Logger service initialized successfully");
-        }
-
-        /// <summary>
-        /// Initializes the ErrorHandler service
-        /// </summary>
-        private void InitializeErrorHandler()
-        {
-            _errorHandler = new ErrorHandler(this, _logger);
-            _logger.Info("ErrorHandler service initialized successfully");
-        }
-
-        /// <summary>
-        /// Initializes the CrashRecovery service
-        /// </summary>
-        private void InitializeCrashRecovery()
-        {
-            _crashRecovery = new CrashRecovery(this, _logger, _errorHandler);
-            _logger.Info("CrashRecovery service initialized successfully");
-        }
-
-        /// <summary>
-        /// Initializes the RiskManager service
-        /// </summary>
-        private void InitializeRiskManager()
-        {
-            _riskManager = new RiskManager(this, _logger);
-            _logger.Info("RiskManager service initialized successfully");
-        }
-
-        /// <summary>
-        /// Initializes the trading indicators
-        /// </summary>
-        private void InitializeIndicators()
-        {
-            try
-            {
-                // Use SourceSeries if specified, otherwise default to Close prices
-                var source = SourceSeries ?? Bars.ClosePrices;
-                
-                // Initialize Moving Averages
-                _fastMA = Indicators.MovingAverage(source, FastPeriod, MAType);
-                _slowMA = Indicators.MovingAverage(source, SlowPeriod, MAType);
-                _biasMA = Indicators.MovingAverage(source, BiasPeriod, MAType);
-                
-                _logger.Info($"Indicators initialized successfully:");
-                _logger.Info($"  Fast MA: {FastPeriod} period {MAType}");
-                _logger.Info($"  Slow MA: {SlowPeriod} period {MAType}");
-                _logger.Info($"  Bias MA: {BiasPeriod} period {MAType}");
-                _logger.Info($"  Source: {(SourceSeries != null ? "Custom" : "Close prices")}");
-            }
-            catch (Exception ex)
-            {
-                _logger.Error("Failed to initialize indicators", ex);
-                _errorHandler?.HandleException(ex, "Indicator initialization failure", attemptRecovery: false);
-                throw;
-            }
-        }
-
-        /// <summary>
-        /// Executes the simple trend following strategy
-        /// </summary>
-        private void ExecuteTrendFollowingStrategy()
-        {
-            try
-            {
-                // Ensure we have enough bars for calculation
-                if (Bars.Count < Math.Max(Math.Max(FastPeriod, SlowPeriod), BiasPeriod) + 1)
-                {
-                    _logger?.Debug($"Not enough bars for strategy calculation. Current: {Bars.Count}, Required: {Math.Max(Math.Max(FastPeriod, SlowPeriod), BiasPeriod) + 1}");
-                    return;
-                }
-
-                // Get current and previous MA values
-                var currentFastMA = _fastMA.Result.LastValue;
-                var currentSlowMA = _slowMA.Result.LastValue;
-                var currentBiasMA = _biasMA.Result.LastValue;
-                
-                var previousFastMA = _fastMA.Result.Last(1);
-                var previousSlowMA = _slowMA.Result.Last(1);
-
-                _logger?.Debug($"MA Values - Fast: {currentFastMA:F5}/{previousFastMA:F5}, Slow: {currentSlowMA:F5}/{previousSlowMA:F5}, Bias: {currentBiasMA:F5}");
-
-                // Check if we already have positions
-                var buyPositions = Positions.FindAll(OrderLabel, Symbol.Name, TradeType.Buy);
-                var sellPositions = Positions.FindAll(OrderLabel, Symbol.Name, TradeType.Sell);
-
-                // Buy signal: previousFastMa < previousSlowMa && currentFastMa > currentSlowMa && currentSlowMa > currentBiasMa
-                bool buySignal = previousFastMA < previousSlowMA && 
-                                currentFastMA > currentSlowMA && 
-                                currentSlowMA > currentBiasMA;
-
-                // Sell signal: previousFastMa > previousSlowMa && currentFastMa < currentSlowMa && currentSlowMa < currentBiasMa
-                bool sellSignal = previousFastMA > previousSlowMA && 
-                                 currentFastMA < currentSlowMA && 
-                                 currentSlowMA < currentBiasMA;
-
-                _logger?.Debug($"Signals - Buy: {buySignal}, Sell: {sellSignal}");
-
-                // Execute buy signal
-                if (buySignal && (TradingDirection == TradingDirection.Both || TradingDirection == TradingDirection.Buy))
-                {
-                    if (buyPositions.Length < MaxBuyTrades)
-                    {
-                        ExecuteMarketOrder(TradeType.Buy);
-                    }
-                    else
-                    {
-                        _logger?.Debug($"Maximum buy trades reached: {buyPositions.Length}/{MaxBuyTrades}");
-                    }
-                }
-
-                // Execute sell signal
-                if (sellSignal && (TradingDirection == TradingDirection.Both || TradingDirection == TradingDirection.Sell))
-                {
-                    if (sellPositions.Length < MaxSellTrades)
-                    {
-                        ExecuteMarketOrder(TradeType.Sell);
-                    }
-                    else
-                    {
-                        _logger?.Debug($"Maximum sell trades reached: {sellPositions.Length}/{MaxSellTrades}");
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger?.Error("Error in trend following strategy execution", ex);
-                _errorHandler?.HandleException(ex, "Strategy execution failure", attemptRecovery: true);
-            }
-        }
-
-
-
-        /// <summary>
-        /// Executes a market order with proper risk management
-        /// </summary>
-        private void ExecuteMarketOrder(TradeType tradeType)
-        {
-            try
-            {
-
-                var (isTradeValid, positionSize, stopLoss, takeProfit) = _riskManager.Run(Symbol, DefaultStopLoss, tradeType, UseTradingHours, TradingHourStart, TradingHourEnd, TradingDirection, MaxSpreadInPips, RiskSizeMode, DefaultPositionSize, RiskPerTrade, FixedRiskAmount, RiskBase, FixedRiskBalance, StopLossMode, DefaultStopLoss, TakeProfitMode, DefaultTakeProfit, StopLossMultiplier, TakeProfitMultiplier, ADRRatio, ADRPeriod, ATRPeriod, RiskPerTrade, LotIncrease, BalanceIncrease);
-                
-                if (!isTradeValid)
-                {
-                    _logger?.Warning($"Trade validation failed for {tradeType} order. Trade cancelled.");
-                    return;
-                }
-
-                _logger?.Info($"Executing {tradeType} order:");
-
-                // Execute the trade
-                var result = ExecuteMarketOrder(tradeType, Symbol.Name, positionSize, OrderLabel, stopLoss, takeProfit);
-
-                if (result.IsSuccessful)
-                {
-                    _logger?.Info($"Order executed successfully. Position ID: {result.Position.Id}");
-                }
-                else
-                {
-                    _logger?.Error($"Order execution failed: {result.Error}");
-                    _errorHandler?.HandleError(ErrorCategory.Trading, ErrorSeverity.Medium, 
-                        $"Order execution failed: {result.Error}", context: $"TradeType: {tradeType}", attemptRecovery: false);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger?.Error($"Error executing {tradeType} order", ex);
-                _errorHandler?.HandleException(ex, "Order execution failure", attemptRecovery: true);
-            }
-        }
-
-
 
         protected override void OnTick()
         {
             try
             {
+                // Check if system is in recovery mode
+                if (_crashRecovery?.IsInRecoveryMode() == true)
+                {
+                    return; // Skip processing during recovery
+                }
+                
+                
                 // OnTick logic will be implemented here
                 // For now, just log occasionally to avoid spam
                 if (Bars.TickVolumes.Count % 1000 == 0)
                 {
-                    _logger?.Debug($"OnTick processed - Tick count: {Bars.TickVolumes.Count}");
-                    
-                    // Check if system is in recovery mode
-                    if (_crashRecovery?.IsInRecoveryMode() == true)
-                    {
-                        _logger?.Debug("System in recovery mode - OnTick processing limited");
-                        return;
-                    }
+                    _logger?.Debug($"CoreBot | OnTick | OnTick processed - Tick count: {Bars.TickVolumes.Count}");
                 }
                 
                 // Future: Main tick processing logic will be implemented here
@@ -539,13 +355,13 @@ namespace cAlgo.Robots
         {
             try
             {
-                _logger?.Debug($"OnBar - New bar opened at {Bars.OpenTimes.LastValue} | Open: {Bars.OpenPrices.LastValue:F5} | Close: {Bars.ClosePrices.LastValue:F5}");
+                _logger?.Debug($"CoreBot | OnBar | New bar opened at {Bars.OpenTimes.LastValue} | Open: {Bars.OpenPrices.LastValue:F5} | Close: {Bars.ClosePrices.LastValue:F5}");
                 
                 // Check system health before proceeding with strategy logic
                 var systemHealth = _errorHandler?.GetSystemHealth() ?? SystemHealth.Healthy;
                 if (systemHealth >= SystemHealth.Critical)
                 {
-                    _logger?.Warning($"System health is {systemHealth} - limiting OnBar processing");
+                    _logger?.Warning($"CoreBot | OnBar | System health is {systemHealth} - limiting OnBar processing");
                     return;
                 }
                 
@@ -562,13 +378,13 @@ namespace cAlgo.Robots
         {
             try
             {
-                _logger?.Info("=== CoreBot Stopping ===");
+                _logger?.Info($"CoreBot | OnStop | === CoreBot Stopping ===");
                 
                 // Log final system statistics
                 if (_errorHandler != null)
                 {
                     var systemHealth = _errorHandler.GetSystemHealth();
-                    _logger?.Info($"Final System Health: {systemHealth}");
+                    _logger?.Info($"CoreBot | OnStop | Final System Health: {systemHealth}");
                     
                     // Log error statistics
                     foreach (ErrorCategory category in Enum.GetValues(typeof(ErrorCategory)))
@@ -576,21 +392,21 @@ namespace cAlgo.Robots
                         var errorCount = _errorHandler.GetErrorCount(category);
                         if (errorCount > 0)
                         {
-                            _logger?.Info($"Error Count [{category}]: {errorCount}");
+                            _logger?.Info($"CoreBot | OnStop | Error Count [{category}]: {errorCount}");
                         }
                     }
                 }
                 
                 // Log final account information
-                _logger?.Info($"Final Account Balance: {Account.Balance:F2} {Account.Asset.Name}");
-                _logger?.Info($"Open Positions: {Positions.Count}");
-                _logger?.Info($"Pending Orders: {PendingOrders.Count}");
+                _logger?.Info($"CoreBot | OnStop | Final Account Balance: {Account.Balance:F2} {Account.Asset.Name}");
+                _logger?.Info($"CoreBot | OnStop | Open Positions: {Positions.Count}");
+                _logger?.Info($"CoreBot | OnStop | Pending Orders: {PendingOrders.Count}");
                 
                 // Dispose of system services
                 _crashRecovery?.Dispose();
                 
                 // Final log entry and cleanup
-                _logger?.Info("CoreBot shutdown completed successfully");
+                _logger?.Info($"CoreBot | OnStop | CoreBot shutdown completed successfully");
                 _logger?.Flush();
                 
                 Print("CoreBot stopped successfully");
@@ -603,7 +419,7 @@ namespace cAlgo.Robots
                 try
                 {
                     _errorHandler?.HandleException(ex, "OnStop shutdown failure", attemptRecovery: false);
-                    _logger?.Error("Error during OnStop", ex);
+                    _logger?.Error($"CoreBot | OnStop | Error during OnStop - {ex.Message}", ex);
                     _logger?.Flush();
                 }
                 catch
@@ -613,5 +429,271 @@ namespace cAlgo.Robots
                 }
             }
         }
+
+        #endregion
+
+
+        #region CUSTOM FUNCTIONS
+        
+        #region INITIALIZATION FUNCTIONS
+
+        private void InitializeLogger()
+        {
+            /***
+            Initializes the Logger service with user parameters
+            
+            Notes:
+                - Creates Logger instance with user-configured settings
+                - Sets up console and file logging based on parameters
+                - Logs successful initialization
+            ***/
+
+            _logger = new Logger(
+                robot: this,
+                botName: BotConfig.BotName,
+                botVersion: BotConfig.BotVersion,
+                enableConsoleLogging: EnableConsoleLogging,
+                enableFileLogging: EnableFileLogging,
+                logFileName: LogFileName
+            );
+            
+            _logger.Info($"CoreBot | InitializeLogger | Logger service initialized successfully");
+        }
+
+        
+        private void InitializeErrorHandler()
+        {
+            /***
+            Initializes the ErrorHandler service
+            
+            Notes:
+                - Creates ErrorHandler instance with logger dependency
+                - Sets up centralized error management
+                - Logs successful initialization
+            ***/
+            _errorHandler = new ErrorHandler(this, _logger);
+            _logger.Info($"CoreBot | InitializeErrorHandler | ErrorHandler service initialized successfully");
+        }
+
+        
+        private void InitializeCrashRecovery()
+        {
+            /***
+            Initializes the CrashRecovery service
+            
+            Notes:
+                - Creates CrashRecovery instance with dependencies
+                - Sets up system health monitoring and recovery
+                - Logs successful initialization
+        ***/
+            _crashRecovery = new CrashRecovery(this, _logger, _errorHandler);
+            _logger.Info($"CoreBot | InitializeCrashRecovery | CrashRecovery service initialized successfully");
+        }
+
+        
+        private void InitializeRiskManager()
+        {
+            /***
+            Initializes the RiskManager service
+            
+            Notes:
+                - Creates RiskManager instance for risk calculations
+                - Sets up position sizing and risk validation
+                - Logs successful initialization
+            ***/
+            _riskManager = new RiskManager(this, _logger);
+            _logger.Info($"CoreBot | InitializeRiskManager | RiskManager service initialized successfully");
+        }
+
+        
+        private void InitializeTradeManager()
+        {
+            /***
+            Initialize the TradeManager service for comprehensive trade management
+            
+            Notes:
+                - Creates TradeManager with all required dependencies
+                - Sets up comprehensive trade execution and management
+                - Integrates with risk management and error handling
+                - Logs successful initialization
+            ***/
+            _tradeManager = new TradeManager(this, _logger, _errorHandler, _riskManager);
+            
+            _logger.Info($"CoreBot | InitializeTradeManager | TradeManager service initialized and configured successfully");
+        }
+
+        
+        private void InitializeIndicators()
+        {
+            /***
+            Initializes the trading indicators
+            
+            Notes:
+                - Sets up MovingAverage indicators for strategy
+                - Configures fast, slow, and bias moving averages
+                - Uses user-defined periods and MA type
+                - Logs indicator configuration details
+            ***/
+            try
+            {
+                // Use SourceSeries if specified, otherwise default to Close prices
+                var source = SourceSeries ?? Bars.ClosePrices;
+                
+                // Initialize Moving Averages
+                _fastMA = Indicators.MovingAverage(source, FastPeriod, MAType);
+                _slowMA = Indicators.MovingAverage(source, SlowPeriod, MAType);
+                _biasMA = Indicators.MovingAverage(source, BiasPeriod, MAType);
+                
+                _logger.Info($"CoreBot | InitializeIndicators | Indicators initialized successfully:");
+                _logger.Info($"CoreBot | InitializeIndicators | Fast MA: {FastPeriod} period {MAType}");
+                _logger.Info($"CoreBot | InitializeIndicators | Slow MA: {SlowPeriod} period {MAType}");
+                _logger.Info($"CoreBot | InitializeIndicators | Bias MA: {BiasPeriod} period {MAType}");
+                _logger.Info($"CoreBot | InitializeIndicators | Source: {(SourceSeries != null ? "Custom" : "Close prices")}");
+            }
+            catch (Exception ex)
+            {
+                _logger.Error($"CoreBot | InitializeIndicators | Failed to initialize indicators - {ex.Message}", ex);
+                _errorHandler?.HandleException(ex, "Indicator initialization failure", attemptRecovery: false);
+                throw;
+            }
+        }
+
+        #endregion
+
+        #region STRATEGY FUNCTIONS
+        
+        private void ExecuteTrendFollowingStrategy()
+        {
+            /***
+            Executes the simple trend following strategy
+            
+            Notes:
+                - Implements MA crossover trend following logic
+                - Checks for buy and sell signals based on MA relationships
+                - Executes trades when valid signals are detected
+                - Includes comprehensive logging of strategy decisions
+            ***/
+            try
+            {
+                // Ensure we have enough bars for calculation
+                if (Bars.Count < Math.Max(Math.Max(FastPeriod, SlowPeriod), BiasPeriod) + 1)
+                {
+                    _logger?.Debug($"CoreBot | ExecuteTrendFollowingStrategy | Not enough bars for strategy calculation. Current: {Bars.Count}, Required: {Math.Max(Math.Max(FastPeriod, SlowPeriod), BiasPeriod) + 1}");
+                    return;
+                }
+
+                // Get current and previous MA values
+                var currentFastMA = _fastMA.Result.LastValue;
+                var currentSlowMA = _slowMA.Result.LastValue;
+                var currentBiasMA = _biasMA.Result.LastValue;
+                
+                var previousFastMA = _fastMA.Result.Last(1);
+                var previousSlowMA = _slowMA.Result.Last(1);
+
+                _logger?.Debug($"CoreBot | ExecuteTrendFollowingStrategy | MA Values - Fast: {currentFastMA:F5}/{previousFastMA:F5}, Slow: {currentSlowMA:F5}/{previousSlowMA:F5}, Bias: {currentBiasMA:F5}");
+
+                // Buy signal: previousFastMa < previousSlowMa && currentFastMa > currentSlowMa && currentSlowMa > currentBiasMa
+                bool buySignal = previousFastMA < previousSlowMA && 
+                                currentFastMA > currentSlowMA && 
+                                currentSlowMA > currentBiasMA;
+
+                // Sell signal: previousFastMa > previousSlowMa && currentFastMa < currentSlowMa && currentSlowMa < currentBiasMa
+                bool sellSignal = previousFastMA > previousSlowMA && 
+                                 currentFastMA < currentSlowMA && 
+                                 currentSlowMA < currentBiasMA;
+
+                _logger?.Debug($"CoreBot | ExecuteTrendFollowingStrategy | Signals - Buy: {buySignal}, Sell: {sellSignal}");
+
+                // Execute buy signal
+                if (buySignal)
+                {
+                   ExecuteOrder(TradeType.Buy);
+                }
+
+                // Execute sell signal
+                if (sellSignal)
+                {
+                    ExecuteOrder(TradeType.Sell);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.Error($"CoreBot | ExecuteTrendFollowingStrategy | Error in trend following strategy execution - {ex.Message}", ex);
+                _errorHandler?.HandleException(ex, "Strategy execution failure", attemptRecovery: true);
+            }
+        }
+
+        #endregion
+
+        #region TRADE FUNCTIONS
+
+         private void ExecuteOrder(TradeType tradeType)
+            {
+                /***
+                Executes a market order using TradeManager with comprehensive risk management
+                
+                Args:
+                    tradeType: The direction of the trade (Buy or Sell)
+                    
+                Notes:
+                    - Uses TradeManager for comprehensive trade execution
+                    - Applies all risk management parameters
+                    - Includes full validation and error handling
+                    - Logs execution results and any failures
+                    ***/
+                try
+                {
+                    _logger?.Info($"CoreBot | ExecuteOrder | Attempting to execute {tradeType} order using TradeManager");
+
+                    // Execute the trade using TradeManager with all RiskManager parameters
+                    var result = _tradeManager.ExecuteTrade(
+                        tradeType,
+                        OrderLabel,
+                        UseTradingHours,
+                        TradingHourStart,
+                        TradingHourEnd,
+                        TradingDirection,
+                        MaxSpreadInPips,
+                        RiskSizeMode,
+                        DefaultPositionSize,
+                        RiskPerTrade,
+                        FixedRiskAmount,
+                        RiskBase,
+                        FixedRiskBalance,
+                        StopLossMode,
+                        DefaultStopLoss,
+                        TakeProfitMode,
+                        DefaultTakeProfit,
+                        StopLossMultiplier,
+                        TakeProfitMultiplier,
+                        ADRRatio,
+                        ADRPeriod,
+                        ATRPeriod,
+                        LotIncrease,
+                        BalanceIncrease
+                    );
+
+                    if (result.IsSuccessful)
+                    {
+                        _logger?.Info($"CoreBot | ExecuteOrder | Order executed successfully via TradeManager. Position ID: {result.Position.Id}");
+                        _logger?.Info($"CoreBot | ExecuteOrder | Execution details - Entry: {result.ExecutionPrice}, SL: {result.StopLossPrice}, TP: {result.TakeProfitPrice}");
+                    }
+                    else
+                    {
+                        _logger?.Error($"CoreBot | ExecuteOrder | Order execution failed via TradeManager: {result.ErrorMessage}");
+                        _errorHandler?.HandleError(ErrorCategory.Trading, ErrorSeverity.Medium, 
+                            $"TradeManager execution failed: {result.ErrorMessage}", context: $"TradeType: {tradeType}", attemptRecovery: false);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger?.Error($"CoreBot | ExecuteOrder | Error executing {tradeType} order via TradeManager - {ex.Message}", ex);
+                    _errorHandler?.HandleException(ex, "TradeManager execution failure", attemptRecovery: true);
+                }
+            }
+        
+        #endregion
+        #endregion
+
     }
 }

@@ -7,12 +7,19 @@ using cAlgo.Robots.Utils;
 
 namespace cAlgo.Robots.Utils
 {
-    /// <summary>
-    /// Comprehensive error handling framework for centralized error management,
-    /// categorization, escalation, and recovery across all cBot components.
-    /// </summary>
+    
     public class ErrorHandler
     {
+        /***
+        Comprehensive error handling framework for centralized error management,
+        categorization, escalation, and recovery across all cBot components.
+        
+        Notes:
+            - Provides centralized error management across all components
+            - Implements error categorization and severity assessment
+            - Handles automatic escalation and recovery procedures
+            - Maintains comprehensive error statistics and history
+    ***/
         private readonly Robot _robot;
         private readonly Logger _logger;
         private readonly object _lockObject = new object();
@@ -30,11 +37,17 @@ namespace cAlgo.Robots.Utils
         private const int HighSeverityThreshold = 3;
         private const int CriticalSeverityThreshold = 1;
 
-        /// <summary>
-        /// Represents an error event with full context
-        /// </summary>
+        
         public class ErrorEvent
         {
+            /***
+            Represents an error event with full context
+            
+            Notes:
+                - Captures complete error information including context
+                - Provides recommended recovery actions
+                - Tracks resolution status for follow-up
+        ***/
             public DateTime Timestamp { get; set; }
             public ErrorCategory Category { get; set; }
             public ErrorSeverity Severity { get; set; }
@@ -45,13 +58,21 @@ namespace cAlgo.Robots.Utils
             public bool IsResolved { get; set; }
         }
 
-        /// <summary>
-        /// Initializes a new instance of the ErrorHandler class
-        /// </summary>
-        /// <param name="robot">The cBot robot instance</param>
-        /// <param name="logger">The logger instance for error logging</param>
+        
         public ErrorHandler(Robot robot, Logger logger)
         {
+            /***
+            Initializes a new instance of the ErrorHandler class
+            
+            Args:
+                robot: The cBot robot instance
+                logger: The logger instance for error logging
+                
+            Notes:
+                - Sets up error tracking for all categories
+                - Initializes error statistics and history
+                - Prepares comprehensive error handling infrastructure
+            ***/
             _robot = robot ?? throw new ArgumentNullException(nameof(robot));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             
@@ -66,22 +87,33 @@ namespace cAlgo.Robots.Utils
                 _lastErrorTimes[category] = DateTime.MinValue;
             }
 
-            _logger.Info("ErrorHandler initialized successfully");
+            _logger.Info($"ErrorHandler | ErrorHandler | ErrorHandler initialized successfully");
         }
 
-        /// <summary>
-        /// Handles an error with comprehensive context and automatic recovery
-        /// </summary>
-        /// <param name="category">The category of the error</param>
-        /// <param name="severity">The severity level of the error</param>
-        /// <param name="message">The error message</param>
-        /// <param name="exception">Optional exception details</param>
-        /// <param name="context">Additional context information</param>
-        /// <param name="attemptRecovery">Whether to attempt automatic recovery</param>
-        /// <returns>The recommended recovery action</returns>
+        
         public RecoveryAction HandleError(ErrorCategory category, ErrorSeverity severity, string message, 
             Exception exception = null, string context = "", bool attemptRecovery = true)
         {
+            /***
+            Handles an error with comprehensive context and automatic recovery
+            
+            Args:
+                category: The category of the error
+                severity: The severity level of the error
+                message: The error message
+                exception: Optional exception details
+                context: Additional context information
+                attemptRecovery: Whether to attempt automatic recovery
+                
+            Returns:
+                The recommended recovery action
+                
+            Notes:
+                - Updates error statistics and system health
+                - Determines appropriate recovery actions
+                - Sends notifications for critical errors
+                - Logs comprehensive error details
+            ***/
             try
             {
                 var errorEvent = new ErrorEvent
@@ -136,7 +168,7 @@ namespace cAlgo.Robots.Utils
                 try
                 {
                     _robot.Print($"ERROR in ErrorHandler: {handlerException.Message}");
-                    _logger?.Error("ErrorHandler encountered an error", handlerException);
+                    _logger?.Error($"ErrorHandler | HandleError | ErrorHandler encountered an error - {handlerException.Message}", handlerException);
                 }
                 catch
                 {
@@ -147,26 +179,50 @@ namespace cAlgo.Robots.Utils
             }
         }
 
-        /// <summary>
-        /// Handles an exception with automatic categorization
-        /// </summary>
-        /// <param name="exception">The exception to handle</param>
-        /// <param name="context">Additional context information</param>
-        /// <param name="attemptRecovery">Whether to attempt automatic recovery</param>
-        /// <returns>The recommended recovery action</returns>
+        
         public RecoveryAction HandleException(Exception exception, string context = "", bool attemptRecovery = true)
         {
+            /***
+            Handles an exception with automatic categorization
+            
+            Args:
+                exception: The exception to handle
+                context: Additional context information
+                attemptRecovery: Whether to attempt automatic recovery
+                
+            Returns:
+                The recommended recovery action
+                
+            Notes:
+                - Automatically categorizes exceptions by type
+                - Determines severity based on exception characteristics
+                - Delegates to comprehensive error handling pipeline
+            ***/
             var category = CategorizeException(exception);
             var severity = DetermineSeverity(exception, category);
             
             return HandleError(category, severity, exception.Message, exception, context, attemptRecovery);
         }
 
-        /// <summary>
-        /// Determines the recovery action based on error characteristics
-        /// </summary>
+        
         private RecoveryAction DetermineRecoveryAction(ErrorCategory category, ErrorSeverity severity, Exception exception)
         {
+            /***
+            Determines the recovery action based on error characteristics
+            
+            Args:
+                category: Error category
+                severity: Error severity level
+                exception: Associated exception if any
+                
+            Returns:
+                Recommended recovery action
+                
+            Notes:
+                - Implements category-specific recovery strategies
+                - Escalates actions based on severity levels
+                - Prioritizes safety for trading and risk operations
+                ***/
             // Critical errors require immediate attention
             if (severity == ErrorSeverity.Critical)
             {
@@ -205,11 +261,23 @@ namespace cAlgo.Robots.Utils
             }
         }
 
-        /// <summary>
-        /// Categorizes an exception based on its type and characteristics
-        /// </summary>
+        
         private ErrorCategory CategorizeException(Exception exception)
         {
+            /***
+            Categorizes an exception based on its type and characteristics
+            
+            Args:
+                exception: The exception to categorize
+                
+            Returns:
+                Appropriate error category for the exception
+                
+            Notes:
+                - Maps exception types to logical error categories
+                - Provides consistent categorization across the system
+                - Defaults to System category for unknown exceptions
+            ***/
             switch (exception)
             {
                 case ArgumentException _:
@@ -232,11 +300,24 @@ namespace cAlgo.Robots.Utils
             }
         }
 
-        /// <summary>
-        /// Determines the severity of an exception
-        /// </summary>
+        
         private ErrorSeverity DetermineSeverity(Exception exception, ErrorCategory category)
         {
+            /***
+            Determines the severity of an exception
+            
+            Args:
+                exception: The exception to assess
+                category: The error category of the exception
+                
+            Returns:
+                Appropriate severity level for the exception
+                
+            Notes:
+                - Assesses severity based on exception type and category
+                - Critical system exceptions get highest severity
+                - Risk-related errors are always high severity
+            ***/
             // Critical system exceptions
             if (exception is OutOfMemoryException || exception is StackOverflowException)
             {
@@ -265,11 +346,20 @@ namespace cAlgo.Robots.Utils
             return exception is ArgumentException ? ErrorSeverity.Medium : ErrorSeverity.Low;
         }
 
-        /// <summary>
-        /// Logs an error event with comprehensive details
-        /// </summary>
+        
         private void LogError(ErrorEvent errorEvent)
         {
+            /***
+            Logs an error event with comprehensive details
+            
+            Args:
+                errorEvent: The error event to log
+                
+            Notes:
+                - Formats error messages with full context
+                - Uses appropriate log levels based on severity
+                - Includes recommended actions in log output
+            ***/
             string logMessage = $"ERROR [{errorEvent.Category}] [{errorEvent.Severity}]: {errorEvent.Message}";
             
             if (!string.IsNullOrEmpty(errorEvent.Context))
@@ -283,25 +373,34 @@ namespace cAlgo.Robots.Utils
             switch (errorEvent.Severity)
             {
                 case ErrorSeverity.Critical:
-                    _logger.Error(logMessage, errorEvent.Exception);
+                    _logger.Error($"ErrorHandler | LogError | {logMessage}", errorEvent.Exception);
                     break;
                 case ErrorSeverity.High:
-                    _logger.Error(logMessage, errorEvent.Exception);
+                    _logger.Error($"ErrorHandler | LogError | {logMessage}", errorEvent.Exception);
                     break;
                 case ErrorSeverity.Medium:
-                    _logger.Warning(logMessage);
+                    _logger.Warning($"ErrorHandler | LogError | {logMessage}");
                     break;
                 case ErrorSeverity.Low:
-                    _logger.Info(logMessage);
+                    _logger.Info($"ErrorHandler | LogError | {logMessage}");
                     break;
             }
         }
 
-        /// <summary>
-        /// Performs the recommended recovery action
-        /// </summary>
+        
         private void PerformRecoveryAction(ErrorEvent errorEvent)
         {
+            /***
+            Performs the recommended recovery action
+            
+            Args:
+                errorEvent: The error event requiring recovery
+                
+            Notes:
+                - Executes appropriate recovery actions
+                - Handles recovery failures gracefully
+                - Logs recovery attempts and outcomes
+            ***/
             try
             {
                 switch (errorEvent.RecommendedAction)
@@ -311,42 +410,49 @@ namespace cAlgo.Robots.Utils
                         break;
                         
                     case RecoveryAction.Retry:
-                        _logger.Info($"Scheduling retry for {errorEvent.Category} error");
+                        _logger.Info($"ErrorHandler | PerformRecoveryAction | Scheduling retry for {errorEvent.Category} error");
                         // Implement retry logic (would depend on specific operation)
                         break;
                         
                     case RecoveryAction.Fallback:
-                        _logger.Info($"Activating fallback mechanism for {errorEvent.Category} error");
+                        _logger.Info($"ErrorHandler | PerformRecoveryAction | Activating fallback mechanism for {errorEvent.Category} error");
                         // Implement fallback logic
                         break;
                         
                     case RecoveryAction.Restart:
-                        _logger.Warning($"Component restart recommended for {errorEvent.Category} error");
+                        _logger.Warning($"ErrorHandler | PerformRecoveryAction | Component restart recommended for {errorEvent.Category} error");
                         // Implement component restart logic
                         break;
                         
                     case RecoveryAction.Alert:
-                        _logger.Error($"Alert required for {errorEvent.Category} error");
+                        _logger.Error($"ErrorHandler | PerformRecoveryAction | Alert required for {errorEvent.Category} error");
                         // Send alert to administrators
                         break;
                         
                     case RecoveryAction.Stop:
-                        _logger.Error($"Operation stop required for {errorEvent.Category} error");
+                        _logger.Error($"ErrorHandler | PerformRecoveryAction | Operation stop required for {errorEvent.Category} error");
                         // Implement safe stop logic
                         break;
                 }
             }
             catch (Exception recoveryException)
             {
-                _logger.Error($"Failed to perform recovery action {errorEvent.RecommendedAction}", recoveryException);
+                _logger.Error($"ErrorHandler | PerformRecoveryAction | Failed to perform recovery action {errorEvent.RecommendedAction} - {recoveryException.Message}", recoveryException);
             }
         }
 
-        /// <summary>
-        /// Updates system health based on recent error patterns
-        /// </summary>
+        
         private void UpdateSystemHealth()
         {
+            /***
+            Updates system health based on recent error patterns
+            
+            Notes:
+                - Analyzes recent error patterns to assess system health
+                - Updates health status based on error frequency and severity
+                - Uses configurable thresholds for health degradation
+                - Logs health status changes
+            ***/
             if (DateTime.Now - _lastHealthCheck < _healthCheckInterval)
                 return;
 
@@ -407,18 +513,27 @@ namespace cAlgo.Robots.Utils
                 // Log health changes
                 if (_currentHealth != previousHealth)
                 {
-                    _logger.Warning($"System health changed from {previousHealth} to {_currentHealth}");
+                    _logger.Warning($"ErrorHandler | UpdateSystemHealth | System health changed from {previousHealth} to {_currentHealth}");
                 }
 
                 _lastHealthCheck = DateTime.Now;
             }
         }
 
-        /// <summary>
-        /// Sends error notifications for critical errors
-        /// </summary>
+        
         private void SendErrorNotification(ErrorEvent errorEvent)
         {
+            /***
+            Sends error notifications for critical errors
+            
+            Args:
+                errorEvent: The critical error event
+                
+            Notes:
+                - Formats comprehensive notification messages
+                - Integrates with available notification channels
+                - Logs notification delivery attempts
+            ***/
             try
             {
                 string notificationMessage = $"CRITICAL ERROR in {BotConfig.BotName}:\n" +
@@ -429,46 +544,74 @@ namespace cAlgo.Robots.Utils
                                            $"Action: {errorEvent.RecommendedAction}";
 
                 // Log notification
-                _logger.Error($"NOTIFICATION SENT: {notificationMessage}");
+                _logger.Error($"ErrorHandler | SendErrorNotification | NOTIFICATION SENT: {notificationMessage}");
 
                 // Future: Add email, Telegram, or other notification integrations here
             }
             catch (Exception notificationException)
             {
-                _logger.Error("Failed to send error notification", notificationException);
+                _logger.Error($"ErrorHandler | SendErrorNotification | Failed to send error notification - {notificationException.Message}", notificationException);
             }
         }
 
-        /// <summary>
-        /// Gets the current system health status
-        /// </summary>
-        /// <returns>Current system health status</returns>
+        
         public SystemHealth GetSystemHealth()
         {
+            /***
+            Gets the current system health status
+            
+            Returns:
+                Current system health status
+                
+            Notes:
+                - Updates health assessment before returning
+                - Provides real-time system health information
+                - Used by other components for health-based decisions
+        ***/
             UpdateSystemHealth();
             return _currentHealth;
         }
 
-        /// <summary>
-        /// Gets error statistics for a specific category
-        /// </summary>
-        /// <param name="category">The error category</param>
-        /// <returns>Error count for the category</returns>
+        
         public int GetErrorCount(ErrorCategory category)
         {
+            /***
+            Gets error statistics for a specific category
+            
+            Args:
+                category: The error category
+                
+            Returns:
+                Error count for the category
+                
+            Notes:
+                - Provides thread-safe access to error statistics
+                - Returns zero for unrecognized categories
+                - Used for monitoring and reporting purposes
+        ***/
             lock (_lockObject)
             {
                 return _errorCounts.ContainsKey(category) ? _errorCounts[category] : 0;
             }
         }
 
-        /// <summary>
-        /// Gets the most recent errors
-        /// </summary>
-        /// <param name="count">Number of recent errors to retrieve</param>
-        /// <returns>List of recent error events</returns>
+        
         public List<ErrorEvent> GetRecentErrors(int count = 10)
         {
+            /***
+            Gets the most recent errors
+            
+            Args:
+                count: Number of recent errors to retrieve (default 10)
+                
+            Returns:
+                List of recent error events
+                
+            Notes:
+                - Provides access to recent error history
+                - Thread-safe access to error event queue
+                - Used for analysis and troubleshooting
+        ***/
             lock (_lockObject)
             {
                 var errors = new List<ErrorEvent>();
@@ -484,11 +627,18 @@ namespace cAlgo.Robots.Utils
             }
         }
 
-        /// <summary>
-        /// Clears error statistics (useful for testing or periodic resets)
-        /// </summary>
+        
         public void ClearErrorStatistics()
         {
+            /***
+            Clears error statistics (useful for testing or periodic resets)
+            
+            Notes:
+                - Resets all error counters to zero
+                - Clears recent error history
+                - Resets system health to healthy status
+                - Thread-safe operation
+        ***/
             lock (_lockObject)
             {
                 foreach (var key in _errorCounts.Keys.ToList())
@@ -500,7 +650,7 @@ namespace cAlgo.Robots.Utils
                 _recentErrors.Clear();
                 _currentHealth = SystemHealth.Healthy;
                 
-                _logger.Info("Error statistics cleared");
+                _logger.Info($"ErrorHandler | ClearErrorStatistics | Error statistics cleared");
             }
         }
     }

@@ -5,19 +5,24 @@ using cAlgo.Robots.Utils;
 
 namespace cAlgo.Robots.Trading
 {
-    /***
-        RiskManager handles all risk-related calculations and trading constraints.
-        
-        This class provides centralized risk management functionality including:
-        - Position sizing based on risk parameters
-        - Trading hours validation
-        - Stop loss and take profit calculation
-        - Account value retrieval for risk calculations
-        
-        All calculations are logged and include proper error handling with fallback values.
-    ***/
     public class RiskManager
     {
+        /***
+        RiskManager - Resposnible for all risk management functions.
+        
+        Args:
+            robot: CoreBot instance for API access
+            logger: Logger service for logging
+        
+        Returns:
+            RiskManager instance with all risk management functions.
+            
+        Notes:
+            - All risk management functions are implemented
+            - Logging for debugging
+            - Proper error handling with fallback values
+        ***/
+
         private readonly Robot _robot;
         private readonly Logger _logger;
 
@@ -26,126 +31,123 @@ namespace cAlgo.Robots.Trading
             _robot = robot ?? throw new ArgumentNullException(nameof(robot));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             
-            _logger.Info("RiskManager initialized successfully");
+            _logger.Info($"RiskManager | Constructor | Initialization SUCCESS");
         }
 
         public (bool isTradeValid, double positionSize, double stopLoss, double takeProfit) Run (
-            Symbol symbol, 
-            double stopLossPips, 
+            Symbol symbol,  
             TradeType tradeType,
-            bool useTradingHours,
-            HourOfDay tradingHourStart,
-            HourOfDay tradingHourEnd,
-            TradingDirection tradingDirection,
-            double maxSpreadInPips,
-            RiskDefaultSize riskSizeMode,
-            double defaultPositionSize,
-            double riskPerTrade,
-            double fixedRiskAmount,
-            RiskBase riskBase,
-            double fixedRiskBalance,
-            StopLossMode stopLossMode,
-            int defaultStopLoss,
-            TakeProfitMode takeProfitMode,
-            int defaultTakeProfit,
-            double stopLossMultiplier,
-            double takeProfitMultiplier,
-            double adrRatio,
-            int adrPeriod,
-            int atrPeriod,
-            double maxRiskPerTrade,
-            double lotIncrease,
-            double balanceIncrease)
-        {
-            try
+            bool UseTradingHours,
+            HourOfDay TradingHourStart,
+            HourOfDay TradingHourEnd,
+            TradingDirection TradingDirection,
+            double MaxSpreadInPips,
+            RiskDefaultSize RiskSizeMode,
+            double DefaultPositionSize,
+            double RiskPerTrade,
+            double FixedRiskAmount,
+            RiskBase RiskBase,
+            double FixedRiskBalance,
+            StopLossMode StopLossMode,
+            int DefaultStopLoss,
+            TakeProfitMode TakeProfitMode,
+            int DefaultTakeProfit,
+            double StopLossMultiplier,
+            double TakeProfitMultiplier,
+            double AdrRatio,
+            int AdrPeriod,
+            int AtrPeriod,
+            double LotIncrease,
+            double BalanceIncrease)
             {
-                if (!ValidateTrade(symbol, defaultPositionSize, stopLossPips, tradeType, useTradingHours, tradingHourStart, tradingHourEnd, tradingDirection, maxSpreadInPips))
+                try
                 {
+                    if (!ValidateTrade(symbol, DefaultPositionSize, DefaultStopLoss, tradeType, UseTradingHours, TradingHourStart, TradingHourEnd, TradingDirection, MaxSpreadInPips))
+                    {
+                        return (false, 0, 0, 0);
+                    }
+
+                    var (_stopLoss, _takeProfit) = CalculateTargets(symbol, tradeType, StopLossMode, DefaultStopLoss, TakeProfitMode, DefaultTakeProfit, StopLossMultiplier, TakeProfitMultiplier, AdrRatio, AdrPeriod, AtrPeriod);
+
+                    var positionSize = CalculatePositionSize(symbol, RiskSizeMode, DefaultPositionSize, RiskPerTrade, _stopLoss, FixedRiskAmount, RiskBase, FixedRiskBalance, LotIncrease, BalanceIncrease);
+
+                    _logger?.Debug($"RiskManager | Run | Exiting RiskManager.Run()");
+                    _logger?.Debug($"RiskManager | Run | ValidateTrade() Return Value: TRUE");
+                    _logger?.Debug($"RiskManager | Run | CalculateTargets() Return Value: Stop Loss: {_stopLoss} pips, Take Profit: {_takeProfit} pips");
+                    _logger?.Debug($"RiskManager | Run | CalculatePositionSize() Return Value: Position Size: {positionSize} volume units");
+
+                    return (true, positionSize, _stopLoss, _takeProfit);
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error($"RiskManager | Run | Error running risk manager - {ex.Message}", ex);
                     return (false, 0, 0, 0);
                 }
-
-                var (stopLoss, takeProfit) = CalculateTargets(symbol, tradeType, stopLossMode, defaultStopLoss, takeProfitMode, defaultTakeProfit, stopLossMultiplier, takeProfitMultiplier, adrRatio, adrPeriod, atrPeriod);
-
-                var positionSize = CalculatePositionSize(symbol, riskSizeMode, defaultPositionSize, riskPerTrade, stopLoss, fixedRiskAmount, riskBase, fixedRiskBalance, maxRiskPerTrade, lotIncrease, balanceIncrease);
-
-                _logger?.Debug($"Exiting RiskManager.Run()");
-                _logger?.Debug($"ValidateTrade() Return Value: TRUE");
-                _logger?.Debug($"CalculateTargets() Return Value: Stop Loss: {stopLoss} pips, Take Profit: {takeProfit} pips");
-                _logger?.Debug($"CalculatePositionSize() Return Value: Position Size: {positionSize} volume units");
-
-                return (true, positionSize, stopLoss, takeProfit);
             }
-            catch (Exception ex)
-            {
-                _logger.Error($"Error running risk manager: {ex.Message}", ex);
-                return (false, 0, 0, 0);
-            }
-        }
 
-        public (int stopLoss, int takeProfit) CalculateTargets(Symbol symbol, TradeType tradeType, StopLossMode stopLossMode, int defaultStopLoss, TakeProfitMode takeProfitMode, int defaultTakeProfit, double stopLossMultiplier, double takeProfitMultiplier, double adrRatio, int adrPeriod, int atrPeriod)
+        public (int StopLoss, int TakeProfit) CalculateTargets(Symbol symbol, TradeType tradeType, StopLossMode StopLossMode, int DefaultStopLoss, TakeProfitMode TakeProfitMode, int DefaultTakeProfit, double StopLossMultiplier, double TakeProfitMultiplier, double AdrRatio, int AdrPeriod, int AtrPeriod)
         {
 
-            int stopLoss = 0;
-            int takeProfit = 0;
+            int _stopLoss = 0;
+            int _takeProfit = 0;
 
-            switch (stopLossMode)
+            switch (StopLossMode)
             {
                 case StopLossMode.Fixed:
-                    stopLoss = defaultStopLoss;
+                    _stopLoss = DefaultStopLoss;
                     break;
                 case StopLossMode.UseATR:
-                    stopLoss = CalculateATRBasedValue(symbol, atrPeriod, stopLossMultiplier, 1.0, defaultStopLoss, "ATR Stop Loss", false);
+                    _stopLoss = CalculateATRBasedValue(symbol, AtrPeriod, StopLossMultiplier, 1.0, DefaultStopLoss, "ATR Stop Loss", false);
                     break;
                 case StopLossMode.UseADR:
-                    stopLoss = CalculateATRBasedValue(symbol, adrPeriod, stopLossMultiplier, adrRatio, defaultStopLoss, "ADR Stop Loss", true);
+                    _stopLoss = CalculateATRBasedValue(symbol, AdrPeriod, StopLossMultiplier, AdrRatio, DefaultStopLoss, "ADR Stop Loss", true);
                     break;
                 case StopLossMode.None:
-                    stopLoss = 0;
+                    _stopLoss = 0;
                     break;
             }
 
-            switch (takeProfitMode)
+            switch (TakeProfitMode)
             {
                 case TakeProfitMode.Fixed:
-                    takeProfit = defaultTakeProfit;
+                    _takeProfit = DefaultTakeProfit;
                     break;
                 case TakeProfitMode.UseATR:
-                    takeProfit = CalculateATRBasedValue(symbol, atrPeriod, takeProfitMultiplier, 1.0, defaultTakeProfit, "ATR Take Profit", false);
+                    _takeProfit = CalculateATRBasedValue(symbol, AtrPeriod, TakeProfitMultiplier, 1.0, DefaultTakeProfit, "ATR Take Profit", false);
                     break;
                 case TakeProfitMode.UseADR:
-                    takeProfit = CalculateATRBasedValue(symbol, adrPeriod, takeProfitMultiplier, adrRatio, defaultTakeProfit, "ADR Take Profit", true);
+                    _takeProfit = CalculateATRBasedValue(symbol, AdrPeriod, TakeProfitMultiplier, AdrRatio, DefaultTakeProfit, "ADR Take Profit", true);
                     break;
                 case TakeProfitMode.None:
-                    takeProfit = 0;
+                    _takeProfit = 0;
                     break;
             }
 
-            _logger?.Debug($"Stop Loss: {stopLoss} pips, Take Profit: {takeProfit} pips");
+            _logger?.Debug($"RiskManager | CalculateTargets | Stop Loss: {_stopLoss} pips, Take Profit: {_takeProfit} pips");
 
-            return (stopLoss, takeProfit);
+            return (_stopLoss, _takeProfit);
         }
 
         public long CalculatePositionSize(
             Symbol symbol,
-            RiskDefaultSize riskSizeMode,
-            double defaultPositionSize,
-            double riskPerTrade,
-            int stopLoss,
-            double fixedRiskAmount,
-            RiskBase riskBase,
-            double fixedRiskBalance,
-            double maxRiskPerTrade,
-            double lotIncrease,
-            double balanceIncrease)
+            RiskDefaultSize RiskSizeMode,
+            double DefaultPositionSize,
+            double RiskPerTrade,
+            int _stopLoss,
+            double FixedRiskAmount,
+            RiskBase RiskBase,
+            double FixedRiskBalance,
+            double LotIncrease,
+            double BalanceIncrease)
         {
             /***
                 Calculates the position size in volume units based on risk management parameters.
                 
                 Args:
                     riskSizeMode: The sizing method (FixedLots, Auto, FixedAmount, FixedLotsStep)
-                    defaultPositionSize: Default position size in lots for fixed lot sizing
+                    DefaultPositionSize: Default position size in lots for fixed lot sizing
                     riskPerTrade: Risk percentage per trade (1.0 = 1% risk)
-                    defaultStopLoss: Stop loss distance in pips for auto sizing
+                    StopLoss: Stop loss distance in pips for auto sizing
                     fixedRiskAmount: Fixed monetary amount to risk for fixed amount sizing
                     riskBase: Account base for risk calculation (Equity, Balance, FreeMargin, FixedBalance)
                     fixedRiskBalance: Fixed balance value when using FixedBalance risk base
@@ -164,36 +166,36 @@ namespace cAlgo.Robots.Trading
             try
             {
 
-                double positionSizeLots, positionSizeVolume = 0;
+                double _positionSizeLots, _positionSizeVolume = 0;
 
-                switch (riskSizeMode)
+                switch (RiskSizeMode)
                 {
                     case RiskDefaultSize.Auto:
-                        positionSizeLots = CalculateAutoPositionSize(symbol, stopLoss, fixedRiskAmount, maxRiskPerTrade, fixedRiskBalance, fixedAmount:false, riskBase);
+                        _positionSizeLots = CalculateAutoPositionSize(symbol, _stopLoss, FixedRiskAmount, RiskPerTrade, FixedRiskBalance, fixedAmount:false, RiskBase);
                         break;
                     case RiskDefaultSize.FixedLots:
-                        positionSizeLots = defaultPositionSize;
+                        _positionSizeLots = DefaultPositionSize;
                         break;
                     case RiskDefaultSize.FixedAmount:
-                        positionSizeLots = CalculateAutoPositionSize(symbol, stopLoss, fixedRiskAmount, maxRiskPerTrade, fixedRiskBalance, fixedAmount:true, riskBase);
+                        _positionSizeLots = CalculateAutoPositionSize(symbol, _stopLoss, FixedRiskAmount, RiskPerTrade, FixedRiskBalance, fixedAmount:true, RiskBase);
                         break;
                     case RiskDefaultSize.FixedLotsStep:
-                        positionSizeLots = CalculateStepBasedPositionSize(lotIncrease, balanceIncrease);
+                        _positionSizeLots = CalculateStepBasedPositionSize(LotIncrease, BalanceIncrease);
                         break;
                     default:
-                        positionSizeLots = defaultPositionSize;
+                        _positionSizeLots = DefaultPositionSize;
                         break;
                 }
 
                 // Normalize position size
-                positionSizeVolume = NormalizePositionSize(symbol, LotsToVolume(symbol, positionSizeLots));
-                return (long)Math.Round(positionSizeVolume);
+                _positionSizeVolume = NormalizePositionSize(symbol, LotsToVolume(symbol, _positionSizeLots));
+                return (long)Math.Round(_positionSizeVolume);
             }
 
             catch (Exception ex)
             {
-                _logger?.Error("Error calculating position size", ex);
-                return (long)Math.Round(_robot.Symbol.QuantityToVolumeInUnits(defaultPositionSize));
+                _logger?.Error($"RiskManager | CalculatePositionSize | Error calculating position size - {ex.Message}", ex);
+                return (long)Math.Round(_robot.Symbol.QuantityToVolumeInUnits(DefaultPositionSize));
             }
         }
 
@@ -256,22 +258,22 @@ namespace cAlgo.Robots.Trading
                 if (result < 1)
                     result = defaultValue;
                     
-                _logger?.Debug($"{logPrefix} calculated: Value={atrValue:F5}, Pips={valueInPips:F1}, Ratio={ratio}, Multiplier={multiplier}, Result={result} pips");
+                _logger?.Debug($"RiskManager | CalculateATRBasedValue | {logPrefix} calculated: Value={atrValue:F5}, Pips={valueInPips:F1}, Ratio={ratio}, Multiplier={multiplier}, Result={result} pips");
                 
                 return result;
             }
             catch (Exception ex)
             {
-                _logger?.Error($"Error calculating {logPrefix}: {ex.Message}", ex);
+                _logger?.Error($"RiskManager | CalculateATRBasedValue | Error calculating {logPrefix} - {ex.Message}", ex);
                 return defaultValue; // Fallback to default
             }
         }
 
-        private double CalculateAutoPositionSize(Symbol symbol, double stopLossPips, double fixedRiskAmount, double maxRiskPerTrade, double fixedRiskBalance, bool fixedAmount, RiskBase riskBase)
+        private double CalculateAutoPositionSize(Symbol symbol, double stopLossPips, double fixedRiskAmount, double riskPerTrade, double fixedRiskBalance, bool fixedAmount, RiskBase riskBase)
         {
             double contractSize = symbol.QuantityToVolumeInUnits(1.0);
             double accountValue = GetAccountValue(riskBase, fixedRiskBalance);
-            double riskAmount = fixedAmount ? fixedRiskAmount : accountValue * (maxRiskPerTrade / 100.0);
+            double riskAmount = fixedAmount ? fixedRiskAmount : accountValue * (riskPerTrade / 100.0);
 
             double positionSizeLots = riskAmount / (stopLossPips * symbol.PipValue * contractSize);
             return positionSizeLots;
@@ -323,7 +325,7 @@ namespace cAlgo.Robots.Trading
             }
             catch (Exception ex)
             {
-                _logger?.Error($"Error normalizing position size for {symbol.Name}: {ex.Message}");
+                _logger?.Error($"RiskManager | NormalizePositionSize | Error normalizing position size for {symbol.Name} - {ex.Message}");
                 return symbol.VolumeInUnitsMin;
             }
         }
@@ -365,7 +367,7 @@ namespace cAlgo.Robots.Trading
         public bool ValidateTrade(
             Symbol symbol, 
             double positionSize, 
-            double stopLossPips, 
+            double StopLossPips, 
             TradeType tradeType,
             bool useTradingHours,
             HourOfDay tradingHourStart,
@@ -399,7 +401,7 @@ namespace cAlgo.Robots.Trading
             
             try
             {
-                _logger?.Debug($"Validating trade: {tradeType} {positionSize} lots {symbol.Name} with {stopLossPips} pips SL");
+                _logger?.Debug($"RiskManager | ValidateTrade | Validating trade: {tradeType} {positionSize} lots {symbol.Name} with {StopLossPips} pips SL");
 
                 // 1. Validate Symbol is okay to trade
                 if (!ValidateSymbol(symbol))
@@ -414,7 +416,7 @@ namespace cAlgo.Robots.Trading
                 }
 
                 // 3. Validate Stop Loss
-                if (!ValidateStopLoss(stopLossPips))
+                if (!ValidateStopLoss(StopLossPips))
                 {
                     return false;
                 }
@@ -438,7 +440,7 @@ namespace cAlgo.Robots.Trading
                 }
 
                 // 7. Validate Risk Amount
-                if (!ValidateRiskAmount(symbol, positionSize, stopLossPips))
+                if (!ValidateRiskAmount(symbol, positionSize, StopLossPips))
                 {
                     return false;
                 }
@@ -452,16 +454,16 @@ namespace cAlgo.Robots.Trading
                 // 9. Check Emergency Stop
                 if (IsEmergencyStopTriggered())
                 {
-                    _logger?.Warning("Emergency stop is active. Trade validation failed.");
+                    _logger?.Warning($"RiskManager | ValidateTrade | Emergency stop is active. Trade validation failed.");
                     return false;
                 }
 
-                _logger?.Debug("Exiting ValidateTrade() : Returning TRUE : All trade validations passed successfully");
+                _logger?.Debug($"RiskManager | ValidateTrade | Exiting ValidateTrade() : Returning TRUE : All trade validations passed successfully");
                 return true;
             }
             catch (Exception ex)
             {
-                _logger?.Error("Error during trade validation", ex);
+                _logger?.Error($"RiskManager | ValidateTrade | Error during trade validation - {ex.Message}", ex);
                 return false;
             }
         }
@@ -485,24 +487,24 @@ namespace cAlgo.Robots.Trading
             
             if (symbol == null)
             {
-                _logger?.Warning("Symbol validation failed: Symbol is null");
+                _logger?.Warning($"RiskManager | ValidateSymbol | Symbol validation failed: Symbol is null");
                 return false;
             }
 
             if (symbol.PipSize <= 0)
             {
-                _logger?.Warning($"Symbol validation failed: Invalid pip size {symbol.PipSize} for {symbol.Name}");
+                _logger?.Warning($"RiskManager | ValidateSymbol | Symbol validation failed: Invalid pip size {symbol.PipSize} for {symbol.Name}");
                 return false;
             }
 
             if (symbol.Digits <= 0)
             {
-                _logger?.Warning($"Symbol validation failed: Invalid digits {symbol.Digits} for {symbol.Name}");
+                _logger?.Warning($"RiskManager | ValidateSymbol | Symbol validation failed: Invalid digits {symbol.Digits} for {symbol.Name}");
                 return false;
             }
 
             // Additional symbol checks can be added here (e.g., trading session status)
-            _logger?.Debug($"Symbol validation passed for {symbol.Name}");
+            _logger?.Debug($"RiskManager | ValidateSymbol | Symbol validation passed for {symbol.Name}");
             return true;
         }
 
@@ -525,7 +527,7 @@ namespace cAlgo.Robots.Trading
             
             if (positionSize <= 0)
             {
-                _logger?.Warning($"Position size validation failed: Invalid size {positionSize}");
+                _logger?.Warning($"RiskManager | ValidatePositionSize | Position size validation failed: Invalid size {positionSize}");
                 return false;
             }
 
@@ -535,17 +537,17 @@ namespace cAlgo.Robots.Trading
 
             if (positionSize < minLotSize)
             {
-                _logger?.Warning($"Position size validation failed: {positionSize} below minimum {minLotSize}");
+                _logger?.Warning($"RiskManager | ValidatePositionSize | Position size validation failed: {positionSize} below minimum {minLotSize}");
                 return false;
             }
 
             if (positionSize > maxLotSize)
             {
-                _logger?.Warning($"Position size validation failed: {positionSize} above maximum {maxLotSize}");
+                _logger?.Warning($"RiskManager | ValidatePositionSize | Position size validation failed: {positionSize} above maximum {maxLotSize}");
                 return false;
             }
 
-            _logger?.Debug($"Position size validation passed: {positionSize} lots");
+            _logger?.Debug($"RiskManager | ValidatePositionSize | Position size validation passed: {positionSize} lots");
             return true;
         }
 
@@ -568,7 +570,7 @@ namespace cAlgo.Robots.Trading
             
             if (stopLossPips <= 0)
             {
-                _logger?.Warning($"Stop loss validation failed: Invalid distance {stopLossPips} pips");
+                _logger?.Warning($"RiskManager | ValidateStopLoss | Stop loss validation failed: Invalid distance {stopLossPips} pips");
                 return false;
             }
 
@@ -577,17 +579,17 @@ namespace cAlgo.Robots.Trading
 
             if (stopLossPips < minStopLossPips)
             {
-                _logger?.Warning($"Stop loss validation failed: {stopLossPips} below minimum {minStopLossPips} pips");
+                _logger?.Warning($"RiskManager | ValidateStopLoss | Stop loss validation failed: {stopLossPips} below minimum {minStopLossPips} pips");
                 return false;
             }
 
             if (stopLossPips > maxStopLossPips)
             {
-                _logger?.Warning($"Stop loss validation failed: {stopLossPips} above maximum {maxStopLossPips} pips");
+                _logger?.Warning($"RiskManager | ValidateStopLoss | Stop loss validation failed: {stopLossPips} above maximum {maxStopLossPips} pips");
                 return false;
             }
 
-            _logger?.Debug($"Stop loss validation passed: {stopLossPips} pips");
+            _logger?.Debug($"RiskManager | ValidateStopLoss | Stop loss validation passed: {stopLossPips} pips");
             return true;
         }
 
@@ -613,11 +615,11 @@ namespace cAlgo.Robots.Trading
             
             if (currentSpread > maxSpreadInPips)
             {
-                _logger?.Warning($"Spread validation failed: Current spread {currentSpread:F1} pips exceeds maximum {maxSpreadInPips} pips for {symbol.Name}");
+                _logger?.Warning($"RiskManager | ValidateSpread | Spread validation failed: Current spread {currentSpread:F1} pips exceeds maximum {maxSpreadInPips} pips for {symbol.Name}");
                 return false;
             }
 
-            _logger?.Debug($"Spread validation passed: {currentSpread:F1} pips for {symbol.Name}");
+            _logger?.Debug($"RiskManager | ValidateSpread | Spread validation passed: {currentSpread:F1} pips for {symbol.Name}");
             return true;
         }
 
@@ -663,11 +665,11 @@ namespace cAlgo.Robots.Trading
             
             if (!isWithinTradingHours)
             {
-                _logger?.Warning($"Trading hours validation failed: Current time {_robot.Server.Time:HH:mm} outside allowed hours {tradingHourStart}-{tradingHourEnd}");
+                _logger?.Warning($"RiskManager | ValidateTradingHours | Trading hours validation failed: Current time {_robot.Server.Time:HH:mm} outside allowed hours {tradingHourStart}-{tradingHourEnd}");
                 return false;
             }
 
-            _logger?.Debug("Trading hours validation passed");
+            _logger?.Debug($"RiskManager | ValidateTradingHours | Trading hours validation passed");
             return true;
         }
 
@@ -691,23 +693,23 @@ namespace cAlgo.Robots.Trading
             
             if (tradingDirection == TradingDirection.Both)
             {
-                _logger?.Debug($"Trading direction validation passed: {tradeType} allowed (Both directions enabled)");
+                _logger?.Debug($"RiskManager | ValidateTradingDirection | Trading direction validation passed: {tradeType} allowed (Both directions enabled)");
                 return true;
             }
 
             if (tradeType == TradeType.Buy && tradingDirection == TradingDirection.Buy)
             {
-                _logger?.Debug("Trading direction validation passed: Buy trade allowed");
+                _logger?.Debug($"RiskManager | ValidateTradingDirection | Trading direction validation passed: Buy trade allowed");
                 return true;
             }
 
             if (tradeType == TradeType.Sell && tradingDirection == TradingDirection.Sell)
             {
-                _logger?.Debug("Trading direction validation passed: Sell trade allowed");
+                _logger?.Debug($"RiskManager | ValidateTradingDirection | Trading direction validation passed: Sell trade allowed");
                 return true;
             }
 
-            _logger?.Warning($"Trading direction validation failed: {tradeType} not allowed (Direction setting: {tradingDirection})");
+            _logger?.Warning($"RiskManager | ValidateTradingDirection | Trading direction validation failed: {tradeType} not allowed (Direction setting: {tradingDirection})");
             return false;
         }
 
@@ -740,16 +742,16 @@ namespace cAlgo.Robots.Trading
 
                 if (riskPercentage > maxRiskPercentage)
                 {
-                    _logger?.Warning($"Risk validation failed: Risk {riskPercentage:F2}% exceeds maximum {maxRiskPercentage}%");
+                    _logger?.Warning($"RiskManager | ValidateRiskAmount | Risk validation failed: Risk {riskPercentage:F2}% exceeds maximum {maxRiskPercentage}%");
                     return false;
                 }
 
-                _logger?.Debug($"Risk validation passed: {riskPercentage:F2}% risk (${riskAmount:F2})");
+                _logger?.Debug($"RiskManager | ValidateRiskAmount | Risk validation passed: {riskPercentage:F2}% risk (${riskAmount:F2})");
                 return true;
             }
             catch (Exception ex)
             {
-                _logger?.Error("Error calculating risk amount during validation", ex);
+                _logger?.Error($"RiskManager | ValidateRiskAmount | Error calculating risk amount during validation - {ex.Message}", ex);
                 return false;
             }
         }
@@ -778,23 +780,23 @@ namespace cAlgo.Robots.Trading
                 // Check margin level (should be above 100%)
                 if (marginLevel.HasValue && marginLevel.Value < 150) // 150% minimum margin level
                 {
-                    _logger?.Warning($"Account health validation failed: Low margin level {marginLevel:F1}%");
+                    _logger?.Warning($"RiskManager | ValidateAccountHealth | Account health validation failed: Low margin level {marginLevel:F1}%");
                     return false;
                 }
 
                 // Check free margin
                 if (freeMargin < 100) // Minimum $100 free margin
                 {
-                    _logger?.Warning($"Account health validation failed: Insufficient free margin ${freeMargin:F2}");
+                    _logger?.Warning($"RiskManager | ValidateAccountHealth | Account health validation failed: Insufficient free margin ${freeMargin:F2}");
                     return false;
                 }
 
-                _logger?.Debug($"Account health validation passed: Margin level {marginLevel:F1}%, Free margin ${freeMargin:F2}");
+                _logger?.Debug($"RiskManager | ValidateAccountHealth | Account health validation passed: Margin level {marginLevel:F1}%, Free margin ${freeMargin:F2}");
                 return true;
             }
             catch (Exception ex)
             {
-                _logger?.Error("Error validating account health", ex);
+                _logger?.Error($"RiskManager | ValidateAccountHealth | Error validating account health - {ex.Message}", ex);
                 return false;
             }
         }
@@ -825,7 +827,7 @@ namespace cAlgo.Robots.Trading
                 var equityThreshold = initialBalance * 0.8;
                 if (currentEquity < equityThreshold)
                 {
-                    _logger?.Warning($"Emergency stop triggered: Equity ${currentEquity:F2} below threshold ${equityThreshold:F2}");
+                    _logger?.Warning($"RiskManager | IsEmergencyStopTriggered | Emergency stop triggered: Equity ${currentEquity:F2} below threshold ${equityThreshold:F2}");
                     return true;
                 }
 
@@ -834,7 +836,7 @@ namespace cAlgo.Robots.Trading
             }
             catch (Exception ex)
             {
-                _logger?.Error("Error checking emergency stop conditions", ex);
+                _logger?.Error($"RiskManager | IsEmergencyStopTriggered | Error checking emergency stop conditions - {ex.Message}", ex);
                 return true; // Fail safe - trigger emergency stop on error
             }
         }
