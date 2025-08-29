@@ -32,7 +32,33 @@ Comprehensive Logging Requirements
 - Every exception MUST be logged with full context using logger.Error() method.
 - For debugging purposes, log the start and completion of major operations with execution time where relevant.
 - Log all external API calls, file operations, and system interactions.
-- Example logging pattern: "Method: CalculatePositionSize | Symbol: EURUSD | Risk: 1% | Balance: 1000 | Result: 0.01 lots"
+
+## Mandatory Logger Message Format
+ALL logger messages MUST follow this exact format:
+
+```csharp
+_logger.LogLevel($"ClassName | MethodName | log message");
+```
+
+**Format Structure:**
+- ClassName: Current class/file name (e.g., "CoreBot", "RiskManager", "TradeManager")
+- MethodName: Current function/method name (e.g., "OnStart", "ExecuteTrade", "CalculatePositionSize")
+- log message: Descriptive message with context, parameters, and results
+
+**Examples:**
+```csharp
+_logger.Debug($"CoreBot | OnStart | Bot initialization started with symbol: {Symbol.Name}");
+_logger.Info($"RiskManager | CalculatePositionSize | Risk: {riskPercent}% | Balance: {balance} | Result: {positionSize} lots");
+_logger.Warning($"TradeManager | ExecuteTrade | Validation FAILED - Reason: Position limits exceeded");
+_logger.Error($"OrderManager | PlaceOrder | Order execution FAILED - Error: {ex.Message}");
+```
+
+**Requirements:**
+- Use pipe (|) separators between ClassName, MethodName, and message
+- Include relevant parameters, calculated values, and context in the message
+- For errors, always include exception details and failure reasons
+- For trade operations, include symbol, volumes, prices, and decision rationale
+- Use consistent naming: class names without extensions, method names as defined
 
 Dependencies
 - cAlgo.API
